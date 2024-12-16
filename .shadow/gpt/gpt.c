@@ -82,9 +82,32 @@ void layernorm_forward(float* out, float* mean, float* rstd,
         }
     }
 }
+
+// void matmul_forward(float* out,
+//                     float* inp, float* weight, float* bias,
+//                     int B, int T, int C, int OC) {
+//     // most of the running time is spent here and in matmul_backward
+//     // OC is short for "output channels"
+//     // inp is (B,T,C), weight is (OC, C), bias is (OC)
+//     // out will be (B,T,OC)
+//     for (int b = 0; b < B; b++) {
+//         for (int t = 0; t < T; t++) {
+//             float* out_bt = out + b * T * OC + t * OC;
+//             float* inp_bt = inp + b * T * C + t * C;
+//             for (int o = 0; o < OC; o++) {
+//                 float val = (bias != NULL) ? bias[o] : 0.0f;
+//                 float* wrow = weight + o*C;
+//                 for (int i = 0; i < C; i++) {
+//                     val += inp_bt[i] * wrow[i];
+//                 }
+//                 out_bt[o] = val;
+//             }
+//         }
+//     }
+// }
+
+
 struct param {
-  int step;
-  int num_threads;
   float *out;
   float *inp;
   float *weight;
@@ -95,21 +118,56 @@ struct param {
   int OC;
 } param;
 
-void compute_block(int tid) {
-  int t = tid - 1;
-  int step = param.step;
-  float *out = param.out;
-  float *inp = param.inp;
-  float *weight = param.weight;
-  float *bias = param.bias;
-  int b = param.b;
-  int T = param.T;
-  int C = param.C;
-  int OC = param.OC;
+int task_done = 0;
+int task_out = 0;
+mutex_t lk = MUTEX_INIT();
+cond_t cv = COND_INIT();
+void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
+                    int T, int C, int OC) {
+  // most of the running time is spent here and in matmul_backward
+  // OC is short for "output channels"
+  // inp is (B,T,C), weight is (OC, C), bias is (OC)
+  // out will be (B,T,OC)
 
-  int start = (tid - 1) * step;
-  int end = (tid == param.num_threads) ? T : start + step;
-  for (int t = start; t < end; t++) {
+  param = (struct param){
+      out, inp, weight, bias, B, T, C, OC,
+  };
+
+  while (task_done < param.T) {
+    mutex_lock(&lk);
+    while (task_done + task_out >= param.T && task_out > 0) {
+      cond_wait(&cv, &lk);
+    }
+    if (task_done + task_out < param.T) {
+      task_out++;
+    }
+    cond_broadcast(&cv);
+    mutex_unlock(&lk);
+  }
+  task_done = 0;
+  task_out = 0;
+}
+
+void compute_block(int tid) {
+  mutex_lock(&lk);
+  while (1) {
+    while (task_out == 0) {
+      cond_wait(&cv, &lk);
+    }
+
+    float *out = param.out;
+    float *inp = param.inp;
+    float *weight = param.weight;
+    float *bias = param.bias;
+    int b = param.b;
+    int T = param.T;
+    int C = param.C;
+    int OC = param.OC;
+    int t = task_done;
+    task_done++;
+    task_out--;
+    cond_broadcast(&cv);
+    mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
     float *inp_bt = inp + b * T * C + t * C;
     for (int o = 0; o < OC; o++) {
@@ -121,24 +179,6 @@ void compute_block(int tid) {
       out_bt[o] = val;
     }
   }
-}
-
-void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
-                    int T, int C, int OC) {
-  // most of the running time is spent here and in matmul_backward
-  // OC is short for "output channels"
-  // inp is (B,T,C), weight is (OC, C), bias is (OC)
-  // out will be (B,T,OC)
-  int num_threads = 4;
-  num_threads = (num_threads > T) ? T : num_threads;
-  int step = T / num_threads;
-  param = (struct param){
-      step, num_threads, out, inp, weight, bias, B, T, C, OC,
-  };
-  for (int i = 0; i < num_threads; i++) {
-    create(compute_block);
-  }
-  join();
 }
 
 void attention_forward(float* out, float* preatt, float* att,
@@ -621,6 +661,11 @@ int main(int argc, char** argv) {
         }
     }
 
+    int num_threads=4;
+    for(int i=0;i<num_threads;i++){
+        create(compute_block);
+    }
+
     for (int t = argc - 1; t < n; t++) {
         gpt2_forward(&model, tokens, 1, t);
         float* probs = model.acts.probs + (t-1) * model.config.vocab_size;
@@ -630,6 +675,8 @@ int main(int argc, char** argv) {
         printf("%d\n", tokens[t]);
         fflush(stdout);
     }
+    
+    join();
 
     gpt2_free(&model);
 
