@@ -128,10 +128,11 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   // OC is short for "output channels"
   // inp is (B,T,C), weight is (OC, C), bias is (OC)
   // out will be (B,T,OC)
-
+  mutex_lock(&lk);
   param = (struct param){
       out, inp, weight, bias, B, T, C, OC,
   };
+  mutex_unlock(&lk);
 
   while (task_done < param.T) {
     mutex_lock(&lk);
@@ -149,7 +150,6 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
 }
 
 void compute_block(int tid) {
-
   while (1) {
     mutex_lock(&lk);
     while (task_out == 0) {
