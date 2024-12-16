@@ -1,0 +1,76 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-fPIC",
+      "-m64",
+      "-U_FORTIFY_SOURCE",
+      "-O1",
+      "-std=gnu11",
+      "-ggdb",
+      "-Wall",
+      "-Werror",
+      "-Wno-unused-result",
+      "-Wno-unused-value",
+      "-Wno-unused-variable",
+      "-o",
+      "libco-64.so",
+      "./co.c"
+    ],
+    "directory": "/home/sirius/os24_jyy/os-workbench/libco",
+    "file": "/home/sirius/os24_jyy/os-workbench/libco/co.c",
+    "output": "/home/sirius/os24_jyy/os-workbench/libco/libco-64.so"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-fPIC",
+      "-m32",
+      "-U_FORTIFY_SOURCE",
+      "-O1",
+      "-std=gnu11",
+      "-ggdb",
+      "-Wall",
+      "-Werror",
+      "-Wno-unused-result",
+      "-Wno-unused-value",
+      "-Wno-unused-variable",
+      "-o",
+      "libco-32.so",
+      "./co.c"
+    ],
+    "directory": "/home/sirius/os24_jyy/os-workbench/libco",
+    "file": "/home/sirius/os24_jyy/os-workbench/libco/co.c",
+    "output": "/home/sirius/os24_jyy/os-workbench/libco/libco-32.so"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I..",
+      "-m64",
+      "-o",
+      "libco-test-64",
+      "main.c"
+    ],
+    "directory": "/home/sirius/os24_jyy/os-workbench/libco/tests",
+    "file": "/home/sirius/os24_jyy/os-workbench/libco/tests/main.c",
+    "output": "/home/sirius/os24_jyy/os-workbench/libco/tests/libco-test-64"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I..",
+      "-m32",
+      "-o",
+      "libco-test-32",
+      "main.c"
+    ],
+    "directory": "/home/sirius/os24_jyy/os-workbench/libco/tests",
+    "file": "/home/sirius/os24_jyy/os-workbench/libco/tests/main.c",
+    "output": "/home/sirius/os24_jyy/os-workbench/libco/tests/libco-test-32"
+  }
+]
