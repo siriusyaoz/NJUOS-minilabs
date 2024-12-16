@@ -164,9 +164,6 @@ void compute_block(int tid) {
     int C = param.C;
     int OC = param.OC;
     int t = task_done;
-    task_done++;
-    task_out--;
-    cond_broadcast(&cv);
     mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
     float *inp_bt = inp + b * T * C + t * C;
@@ -178,6 +175,11 @@ void compute_block(int tid) {
       }
       out_bt[o] = val;
     }
+    mutex_lock(&lk);
+    task_done++;
+    task_out--;
+    cond_broadcast(&cv);
+    mutex_unlock(&lk);
   }
 }
 
