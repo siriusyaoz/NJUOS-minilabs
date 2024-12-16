@@ -149,8 +149,9 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
 }
 
 void compute_block(int tid) {
-  mutex_lock(&lk);
+
   while (1) {
+    mutex_lock(&lk);
     while (task_out == 0) {
       cond_wait(&cv, &lk);
     }
