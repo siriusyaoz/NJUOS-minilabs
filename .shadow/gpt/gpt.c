@@ -120,6 +120,7 @@ struct param {
 
 int task_done = 0;
 int task_out = 0;
+int task_index=0;
 mutex_t lk = MUTEX_INIT();
 cond_t cv = COND_INIT();
 void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
@@ -148,6 +149,7 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   mutex_lock(&lk);
   task_done = 0;
   task_out = 0;
+  task_index=0;
   mutex_unlock(&lk);
 }
 
@@ -166,7 +168,9 @@ void compute_block(int tid) {
     int T = param.T;
     int C = param.C;
     int OC = param.OC;
-    int t = task_done;
+    int t = task_index;
+    task_index++;
+    task_out--;
     mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
     float *inp_bt = inp + b * T * C + t * C;
@@ -180,7 +184,6 @@ void compute_block(int tid) {
     }
     mutex_lock(&lk);
     task_done++;
-    task_out--;
     cond_broadcast(&cv);
     mutex_unlock(&lk);
   }
