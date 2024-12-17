@@ -148,13 +148,12 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
       cond_broadcast(&cvC);
       mutex_unlock(&lk);
     }
-    mutex_lock(&lk);
-    while (task_done != T) {
-      cond_wait(&cvP, &lk);
-    }
-    mutex_unlock(&lk);
   }
-
+  mutex_lock(&lk);
+  while (task_done != B*T) {
+    cond_wait(&cvP, &lk);
+  }
+  mutex_unlock(&lk);
 }
 void compute_block(int tid) {
   while (1) {
