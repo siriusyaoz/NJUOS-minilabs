@@ -138,7 +138,6 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
       out, inp, weight, bias, B, T, C, OC,
   };
   task_count = param.T;
-  task_out=1;
   task_done=0;
   mutex_unlock(&lk);
 
