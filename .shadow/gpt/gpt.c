@@ -120,8 +120,9 @@ struct param {
 #define MAX_TASKS (20)
 int tasks[MAX_TASKS];
 int task_count = 0;
+int task_done=0;
 int should_exit = 0;
-
+int task_out=0;
 mutex_t lk = MUTEX_INIT();
 cond_t cvC = COND_INIT();
 cond_t cvP = COND_INIT();
@@ -137,25 +138,33 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
       out, inp, weight, bias, B, T, C, OC,
   };
   task_count = param.T;
-  should_exit = 0;
+  task_out=1;
+  task_done=0;
+  mutex_unlock(&lk);
 
   while(1){
-    cond_broadcast(&cvC);
-    while (task_count > 0) {
+    mutex_lock(&lk);
+    while(task_out){
       cond_wait(&cvP, &lk);
     }
-    if(task_count==0){
-        break;
+    if (task_count == 0) {
+      break;
     }
+    task_out=1;
+    cond_broadcast(&cvC);
+    mutex_unlock(&lk);
   }
-
+  task_out=0;
+  while(task_done!=param.T){
+    cond_wait(&cvP,&lk);
+  }
   mutex_unlock(&lk);
 }
 
 void compute_block(int tid) {
   while (1) {
     mutex_lock(&lk);
-    while (task_count == 0 && !should_exit) {
+    while (task_out == 0 && !should_exit) {
       cond_wait(&cvC, &lk);
     }
     if (should_exit) {
@@ -172,6 +181,8 @@ void compute_block(int tid) {
     int OC = param.OC;
 
     int t = --task_count;
+    task_out=0;
+    cond_signal(&cvP);
     mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
     float *inp_bt = inp + b * T * C + t * C;
@@ -184,9 +195,8 @@ void compute_block(int tid) {
       out_bt[o] = val;
     }
     mutex_lock(&lk);
-    if(task_count==0){
-        cond_signal(&cvP);
-    }
+    task_done++;
+    cond_signal(&cvP);
     mutex_unlock(&lk);
   }
 }
