@@ -121,7 +121,7 @@ struct param {
 int tasks[MAX_TASKS];
 int task_count = 0;
 int task_out = 0;
-bool should_exit = false;
+int should_exit = 0;
 
 mutex_t lk = MUTEX_INIT();
 cond_t cvC = COND_INIT();
@@ -138,7 +138,7 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
       out, inp, weight, bias, B, T, C, OC,
   };
   task_count = 0;
-  should_exit = false;
+  should_exit = 0;
   for (int i = 0; i < T; i++) {
     tasks[task_count++] = i;
   }
@@ -681,7 +681,7 @@ int main(int argc, char** argv) {
         printf("%d\n", tokens[t]);
         fflush(stdout);
     }
-    
+    should_exit=1;
     join();
 
     gpt2_free(&model);
