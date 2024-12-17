@@ -139,13 +139,16 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   task_count = param.T;
   should_exit = 0;
 
-
-  cond_broadcast(&cvC);
-  mutex_unlock(&lk);
-  mutex_lock(&lk);
-  while (task_count > 0) {
-    cond_wait(&cvP, &lk);
+  while(1){
+    cond_broadcast(&cvC);
+    while (task_count > 0) {
+      cond_wait(&cvP, &lk);
+    }
+    if(task_count==0){
+        break;
+    }
   }
+
   mutex_unlock(&lk);
 }
 
