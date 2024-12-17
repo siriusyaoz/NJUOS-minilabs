@@ -83,28 +83,124 @@ void layernorm_forward(float* out, float* mean, float* rstd,
     }
 }
 
-void matmul_forward(float* out,
-                    float* inp, float* weight, float* bias,
-                    int B, int T, int C, int OC) {
-    // most of the running time is spent here and in matmul_backward
-    // OC is short for "output channels"
-    // inp is (B,T,C), weight is (OC, C), bias is (OC)
-    // out will be (B,T,OC)
-    for (int b = 0; b < B; b++) {
-        for (int t = 0; t < T; t++) {
-            float* out_bt = out + b * T * OC + t * OC;
-            float* inp_bt = inp + b * T * C + t * C;
-            for (int o = 0; o < OC; o++) {
-                float val = (bias != NULL) ? bias[o] : 0.0f;
-                float* wrow = weight + o*C;
-                for (int i = 0; i < C; i++) {
-                    val += inp_bt[i] * wrow[i];
-                }
-                out_bt[o] = val;
-            }
-        }
+// void matmul_forward(float* out,
+//                     float* inp, float* weight, float* bias,
+//                     int B, int T, int C, int OC) {
+//     // most of the running time is spent here and in matmul_backward
+//     // OC is short for "output channels"
+//     // inp is (B,T,C), weight is (OC, C), bias is (OC)
+//     // out will be (B,T,OC)
+//     for (int b = 0; b < B; b++) {
+//         for (int t = 0; t < T; t++) {
+//             float* out_bt = out + b * T * OC + t * OC;
+//             float* inp_bt = inp + b * T * C + t * C;
+//             for (int o = 0; o < OC; o++) {
+//                 float val = (bias != NULL) ? bias[o] : 0.0f;
+//                 float* wrow = weight + o*C;
+//                 for (int i = 0; i < C; i++) {
+//                     val += inp_bt[i] * wrow[i];
+//                 }
+//                 out_bt[o] = val;
+//             }
+//         }
+//     }
+// }
+
+struct param {
+  float *out_pt;
+  float *inp_pt;
+  float *weight;
+  float *bias;
+  int C;
+  int OC;
+} param;
+
+//也可以设立一个缓冲区
+// void buffer_push(calc_args args) {
+//   buffer[tail] = args;
+//   tail = (tail + 1) % BUFFER_SIZE;
+//   buf_count++;
+// }
+
+// void buffer_pop(calc_args *args) {
+//   *args = buffer[head];
+//   head = (head + 1) % BUFFER_SIZE;
+//   buf_count--;
+// }
+#define MAX_TASKS (20)
+int tasks[MAX_TASKS];
+int task_count = 0;
+int task_done=0;
+int should_exit = 0;
+int task_out=0;
+mutex_t lk = MUTEX_INIT();
+cond_t cvC = COND_INIT();
+cond_t cvP = COND_INIT();
+void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
+                    int T, int C, int OC) {
+  // most of the running time is spent here and in matmul_backward
+  // OC is short for "output channels"
+  // inp is (B,T,C), weight is (OC, C), bias is (OC)
+  // out will be (B,T,OC)
+  for (int b = 0; b < B; b++) {
+    for (int t = 0; t < T; t++) {
+      float *out_bt = out + b * T * OC + t * OC;
+      float *inp_bt = inp + b * T * C + t * C;
+
+      mutex_lock(&lk);
+      while (task_out) {
+          cond_wait(&cvP, &lk);
+      }
+      task_out = 1;
+      param = (struct param){
+          out_bt, inp_bt, weight, bias, C, OC,
+      };
+      cond_broadcast(&cvC);
+      mutex_unlock(&lk);
     }
+  }
+  mutex_lock(&lk);
+  while (task_done != B*T) {
+    cond_wait(&cvP, &lk);
+  }
+  task_done=0;
+  mutex_unlock(&lk);
 }
+void compute_block(int tid) {
+  while (1) {
+    mutex_lock(&lk);
+    while (task_out == 0 && !should_exit) {
+      cond_wait(&cvC, &lk);
+    }
+    if (should_exit) {
+      mutex_unlock(&lk);
+      break;
+    }
+    float *out_bt = param.out_pt;
+    float *inp_bt = param.inp_pt;
+    float *weight = param.weight;
+    float *bias = param.bias;
+    int C = param.C;
+    int OC = param.OC;
+
+    task_out=0;
+    cond_signal(&cvP);
+    mutex_unlock(&lk);
+    for (int o = 0; o < OC; o++) {
+      float val = (bias != NULL) ? bias[o] : 0.0f;
+      float *wrow = weight + o * C;
+      for (int i = 0; i < C; i++) {
+        val += inp_bt[i] * wrow[i];
+      }
+      out_bt[o] = val;
+    }
+    mutex_lock(&lk);
+    task_done++;
+    cond_signal(&cvP);
+    mutex_unlock(&lk);
+  }
+}
+//2.11s ->0.872s
 
 void attention_forward(float* out, float* preatt, float* att,
                        float* inp,
@@ -586,6 +682,11 @@ int main(int argc, char** argv) {
         }
     }
 
+    int num_threads=4;
+    for(int i=0;i<num_threads;i++){
+        create(compute_block);
+    }
+
     for (int t = argc - 1; t < n; t++) {
         gpt2_forward(&model, tokens, 1, t);
         float* probs = model.acts.probs + (t-1) * model.config.vocab_size;
@@ -595,6 +696,11 @@ int main(int argc, char** argv) {
         printf("%d\n", tokens[t]);
         fflush(stdout);
     }
+    mutex_lock(&lk);
+    should_exit = 1;
+    cond_broadcast(&cvC); // 通知所有线程退出
+    mutex_unlock(&lk);
+    join();
 
     gpt2_free(&model);
 
