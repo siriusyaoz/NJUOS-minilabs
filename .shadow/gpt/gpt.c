@@ -136,11 +136,9 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   param = (struct param){
       out, inp, weight, bias, B, T, C, OC,
   };
-  task_count = 0;
+  task_count = param.T;
   should_exit = 0;
-  for (int i = 0; i < T; i++) {
-    tasks[task_count++] = i;
-  }
+
 
   cond_broadcast(&cvC);
   mutex_unlock(&lk);
@@ -169,7 +167,8 @@ void compute_block(int tid) {
     int T = param.T;
     int C = param.C;
     int OC = param.OC;
-    int t = tasks[--task_count];
+    
+    int t = --task_count;
     mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
     float *inp_bt = inp + b * T * C + t * C;
