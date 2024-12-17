@@ -107,12 +107,10 @@ void layernorm_forward(float* out, float* mean, float* rstd,
 // }
 
 struct param {
-  float *out;
-  float *inp;
+  float *out_pt;
+  float *inp_pt;
   float *weight;
   float *bias;
-  int b;
-  int T;
   int C;
   int OC;
 } param;
@@ -132,35 +130,33 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   // OC is short for "output channels"
   // inp is (B,T,C), weight is (OC, C), bias is (OC)
   // out will be (B,T,OC)
+  for (int b = 0; b < B; b++) {
+    for (int t = 0; t < T; t++) {
+      float *out_bt = out + b * T * OC + t * OC;
+      float *inp_bt = inp + b * T * C + t * C;
+      mutex_lock(&lk);
 
-  mutex_lock(&lk);
-  param = (struct param){
-      out, inp, weight, bias, B, T, C, OC,
-  };
-  task_count = param.T;
-  task_done=0;
-  mutex_unlock(&lk);
-
-  while(1){
+      task_done = 0;//已完成计算的任务
+ 
+      while (task_out) {
+          cond_wait(&cvP, &lk);
+      }
+      task_out = 1;
+      param = (struct param){
+          out_bt, inp_bt, weight, bias, C, OC,
+      };
+      cond_broadcast(&cvC);
+      mutex_unlock(&lk);
+    }
     mutex_lock(&lk);
-    while(task_out){
+    task_out = 0;
+    while (task_done != T) {
       cond_wait(&cvP, &lk);
     }
-    if (task_count == 0) {
-      break;
-    }
-    task_out=1;
-    cond_broadcast(&cvC);
     mutex_unlock(&lk);
   }
-  mutex_lock(&lk);
-  task_out=0;
-  while(task_done!=param.T){
-    cond_wait(&cvP,&lk);
-  }
-  mutex_unlock(&lk);
-}
 
+}
 void compute_block(int tid) {
   while (1) {
     mutex_lock(&lk);
@@ -171,21 +167,16 @@ void compute_block(int tid) {
       mutex_unlock(&lk);
       break;
     }
-    float *out = param.out;
-    float *inp = param.inp;
+    float *out_bt = param.out_pt;
+    float *inp_bt = param.inp_pt;
     float *weight = param.weight;
     float *bias = param.bias;
-    int b = param.b;
-    int T = param.T;
     int C = param.C;
     int OC = param.OC;
 
-    int t = --task_count;
     task_out=0;
     cond_signal(&cvP);
     mutex_unlock(&lk);
-    float *out_bt = out + b * T * OC + t * OC;
-    float *inp_bt = inp + b * T * C + t * C;
     for (int o = 0; o < OC; o++) {
       float val = (bias != NULL) ? bias[o] : 0.0f;
       float *wrow = weight + o * C;
