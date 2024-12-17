@@ -181,10 +181,11 @@ void compute_block(int tid) {
       }
       out_bt[o] = val;
     }
-
+    mutex_lock(&lk);
     if(task_count==0){
         cond_signal(&cvP);
     }
+    mutex_unlock(&lk);
   }
 }
 
