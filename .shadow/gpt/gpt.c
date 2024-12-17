@@ -120,7 +120,6 @@ struct param {
 #define MAX_TASKS (20)
 int tasks[MAX_TASKS];
 int task_count = 0;
-int task_out = 0;
 int should_exit = 0;
 
 mutex_t lk = MUTEX_INIT();
@@ -155,7 +154,7 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
 void compute_block(int tid) {
   mutex_lock(&lk);
   while (1) {
-    while (task_out == 0 && !should_exit) {
+    while (task_count == 0 && !should_exit) {
       cond_wait(&cvC, &lk);
     }
     if (should_exit) {
