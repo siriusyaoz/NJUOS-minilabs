@@ -134,10 +134,8 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
     for (int t = 0; t < T; t++) {
       float *out_bt = out + b * T * OC + t * OC;
       float *inp_bt = inp + b * T * C + t * C;
-      mutex_lock(&lk);
 
-      task_done = 0;//已完成计算的任务
- 
+      mutex_lock(&lk);
       while (task_out) {
           cond_wait(&cvP, &lk);
       }
@@ -153,6 +151,7 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   while (task_done != B*T) {
     cond_wait(&cvP, &lk);
   }
+  task_done=0;
   mutex_unlock(&lk);
 }
 void compute_block(int tid) {
