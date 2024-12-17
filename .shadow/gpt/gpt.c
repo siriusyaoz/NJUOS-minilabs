@@ -144,6 +144,8 @@ void matmul_forward(float *out, float *inp, float *weight, float *bias, int B,
   }
 
   cond_broadcast(&cvC);
+  mutex_unlock(&lk);
+  mutex_lock(&lk);
   while (task_count > 0) {
     cond_wait(&cvP, &lk);
   }
@@ -156,7 +158,7 @@ void compute_block(int tid) {
     while (task_out == 0 && !should_exit) {
       cond_wait(&cvC, &lk);
     }
-    if (task_count == 0 && should_exit) {
+    if (should_exit) {
       mutex_unlock(&lk);
       break;
     }
@@ -181,9 +183,9 @@ void compute_block(int tid) {
       out_bt[o] = val;
     }
 
-    mutex_lock(&lk);
-    cond_broadcast(&cvP);
-    mutex_unlock(&lk);
+    if(task_count==0){
+        cond_signal(&cvP);
+    }
   }
 }
 
