@@ -167,7 +167,7 @@ void compute_block(int tid) {
     int T = param.T;
     int C = param.C;
     int OC = param.OC;
-    
+
     int t = --task_count;
     mutex_unlock(&lk);
     float *out_bt = out + b * T * OC + t * OC;
@@ -682,7 +682,10 @@ int main(int argc, char** argv) {
         printf("%d\n", tokens[t]);
         fflush(stdout);
     }
-    should_exit=1;
+    mutex_lock(&lk);
+    should_exit = 1;
+    cond_broadcast(&cvC); // 通知所有线程退出
+    mutex_unlock(&lk);
     join();
 
     gpt2_free(&model);
