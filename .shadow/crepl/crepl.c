@@ -15,7 +15,7 @@ static char path[] = "/tmp/crepl_functions.c";
 static char so_path[] = "/tmp/crepl_functions.so";
 
 int main(int argc, char *argv[]) {
-  static char line[4096];
+  static char line[1024];
   char c[] = "int";
   char *expressions[100];
   int index = 0;
