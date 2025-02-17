@@ -11,9 +11,8 @@ void complie_shared_lib(char *line);
 int eval(char *line);
 void create_tmp_file();
 
-static char path[] = "/tmp/crepl_functionsXXXXXX";
-static char so_path[] = "/tmp/crepl_functions.so";
-
+static char path[] = "crepl_functionsXXXXXX";
+static char* so_path;
 int main(int argc, char *argv[]) {
   static char line[1024];
   char c[] = "int";
@@ -57,7 +56,7 @@ void create_tmp_file() {
 void complie_shared_lib(char *line) {
   FILE *fp = fopen(path, "a");
   if (!fp) {
-    perror("fdopen");
+    perror("fopen");
     fclose(fp);
     exit(EXIT_FAILURE);
   }
@@ -67,6 +66,7 @@ void complie_shared_lib(char *line) {
 
   pid_t pid = fork();
   if (pid == 0) {
+    so_path=strcat(path, ".so");
     execlp("gcc", "-shared", "-fPIC", "-o", so_path, path, NULL);
     perror("execlp");
     exit(EXIT_FAILURE);
