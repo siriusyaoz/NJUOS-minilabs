@@ -1,18 +1,116 @@
+#include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+
+void complie_shared_lib(char *line);
+int eval(char *line);
+void create_tmp_file();
+
+static char path[] = "/tmp/crepl_functions.c";
+static char so_path[] = "/tmp/crepl_functions.so";
 
 int main(int argc, char *argv[]) {
-    static char line[4096];
+  static char line[4096];
+  char c[] = "int";
+  char *expressions[100];
+  int index = 0;
+  create_tmp_file();
+  while (1) {
+    printf("crepl> ");
+    fflush(stdout);
 
-    while (1) {
-        printf("crepl> ");
-        fflush(stdout);
-
-        if (!fgets(line, sizeof(line), stdin)) {
-            break;
-        }
-
-        // To be implemented.
-        printf("Got %zu chars.\n", strlen(line));
+    if (!fgets(line, sizeof(line), stdin)) {
+      break;
     }
+
+    // To be implemented.
+    printf("Got %zu chars.\n", strlen(line));
+
+    if (strncmp(line, c, 3) == 0) {
+      complie_shared_lib(line);
+      printf("Added function: %s",line);
+      fflush(stdout);
+    } else {
+      char new_line[4096];
+      snprintf(new_line, sizeof(new_line),
+               "int __expr_wrapper_%d() {return %s;}", index++, line);
+      complie_shared_lib(new_line);
+      printf("result is %d", eval(new_line));
+      fflush(stdout);
+    }
+  }
+}
+
+void create_tmp_file() {
+  int fd = mkstemp(path);
+  if (fd == -1) {
+    perror("mkstemp");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void complie_shared_lib(char *line) {
+  FILE *fp = fopen(path, "a");
+  if (!fp) {
+    perror("fdopen");
+    fclose(fp);
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(fp, "%s\n", line); // 将函数定义写入临时文件
+  fclose(fp);
+
+  pid_t pid = fork();
+  if (pid == 0) {
+    execlp("gcc", "-shared", "-fPIC", "-o", so_path, path, NULL);
+    perror("execlp");
+    exit(EXIT_FAILURE);
+  }
+//  else {
+//     // Parent process: Wait for the child to finish
+//     int status;
+//     waitpid(pid, &status, 0);
+//     if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+//       fprintf(stderr, "Compilation failed\n");
+//       unlink(path);
+//       return;
+//     }
+//   }
+}
+
+int eval(char *func) {
+  // Step 3: Load the shared library and get the function pointer
+  void *handle;
+  int (*foo)(void); // 假设foo是一个无参数且返回int的函数
+  char *error;
+
+  // 打开共享库
+  handle = dlopen(so_path, RTLD_LAZY);
+  if (!handle) {
+    fprintf(stderr, "%s\n", dlerror());
+    exit(EXIT_FAILURE);
+  }
+
+  // 清除现有的错误
+  dlerror();
+
+  // 获取foo函数的地址
+  *(void **)(&foo) = dlsym(handle, func);
+  if ((error = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", error);
+    dlclose(handle);
+    return 1;
+  }
+
+  // 调用函数
+  int result = foo();
+
+  // 关闭共享库
+  dlclose(handle);
+  return result;
 }
