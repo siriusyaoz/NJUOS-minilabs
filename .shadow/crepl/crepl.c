@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
       char new_line[1100];
       snprintf(new_line, sizeof(new_line),
                "int __expr_wrapper_%d() {return %s;}", index++, line);
+      printf("%s\n", new_line);
       complie_shared_lib(new_line, 1);
       snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
       printf("result is %d\n", eval(new_line));
@@ -70,11 +71,11 @@ void complie_shared_lib(char *line, int compile) {
     pid_t pid = fork();
     if (pid == 0) {
       snprintf(so_path, sizeof(so_path), "%s.so", path);
-      execlp("gcc", "gcc", "-shared","-x", "c", "-fPIC", "-o", so_path, path, NULL);
+      execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o", so_path, path,
+             NULL);
       perror("execlp");
       exit(EXIT_FAILURE);
-    }
-    else {
+    } else {
       // Parent process: Wait for the child to finish
       int status;
       waitpid(pid, &status, 0);
@@ -82,6 +83,8 @@ void complie_shared_lib(char *line, int compile) {
         fprintf(stderr, "Compilation failed\n");
         unlink(path);
         return;
+      }else{
+        printf("Compilation success\n");
       }
     }
   }
