@@ -37,12 +37,13 @@ int main(int argc, char *argv[]) {
     } else {
       char new_line[1100];
       snprintf(new_line, sizeof(new_line),
-               "int __expr_wrapper_%d() {return %s;}", index++, line);
+               "int __expr_wrapper_%d() {return %s;}", index, line);
       printf("%s\n", new_line);
       complie_shared_lib(new_line, 1);
       snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
       printf("result is %d\n", eval(new_line));
       fflush(stdout);
+      index++;
     }
   }
 }
