@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
       index++;
     }
   }
+  unlink(path);
 }
 
 void create_tmp_file() {
