@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
       printf("Added function: %s\n",line);
       fflush(stdout);
     } else {
-      char new_line[1024];
+      char new_line[1100];
       snprintf(new_line, sizeof(new_line),
                "int __expr_wrapper_%d() {return %s;}", index++, line);
       complie_shared_lib(new_line);
