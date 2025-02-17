@@ -7,12 +7,12 @@
 #include <time.h>
 #include <unistd.h>
 
-void complie_shared_lib(char *line);
+void complie_shared_lib(char *line, int compile);
 int eval(char *line);
 void create_tmp_file();
 
 static char path[] = "crepl_functionsXXXXXX";
-static char* so_path;
+static char so_path[25];
 int main(int argc, char *argv[]) {
   static char line[1024];
   char c[] = "int";
@@ -31,15 +31,15 @@ int main(int argc, char *argv[]) {
     printf("Got %zu chars.\n", strlen(line));
 
     if (strncmp(line, c, 3) == 0) {
-      complie_shared_lib(line);
-      printf("Added function: %s\n",line);
+      complie_shared_lib(line, 0);
+      printf("Added function: %s\n", line);
       fflush(stdout);
     } else {
       char new_line[1100];
       snprintf(new_line, sizeof(new_line),
                "int __expr_wrapper_%d() {return %s;}", index++, line);
-      complie_shared_lib(new_line);
-      snprintf(new_line,sizeof(new_line)," __expr_wrapper_%d",index);
+      complie_shared_lib(new_line, 1);
+      snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
       printf("result is %d\n", eval(new_line));
       fflush(stdout);
     }
@@ -54,7 +54,7 @@ void create_tmp_file() {
   }
 }
 
-void complie_shared_lib(char *line) {
+void complie_shared_lib(char *line, int compile) {
   FILE *fp = fopen(path, "a");
   if (!fp) {
     perror("fopen");
@@ -65,23 +65,25 @@ void complie_shared_lib(char *line) {
   fprintf(fp, "%s\n", line); // 将函数定义写入临时文件
   fclose(fp);
 
-  pid_t pid = fork();
-  if (pid == 0) {
-    so_path=strcat(path, ".so");
-    execlp("gcc", "-shared", "-fPIC", "-o", so_path, path, NULL);
-    perror("execlp");
-    exit(EXIT_FAILURE);
+  if (compile) {
+    pid_t pid = fork();
+    if (pid == 0) {
+      snprintf(so_path, sizeof(so_path), "%s.so", path);
+      execlp("gcc", "gcc", "-shared", "-fPIC", "-o", so_path, path, NULL);
+      perror("execlp");
+      exit(EXIT_FAILURE);
+    }
+    else {
+      // Parent process: Wait for the child to finish
+      int status;
+      waitpid(pid, &status, 0);
+      if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+        fprintf(stderr, "Compilation failed\n");
+        unlink(path);
+        return;
+      }
+    }
   }
-//  else {
-//     // Parent process: Wait for the child to finish
-//     int status;
-//     waitpid(pid, &status, 0);
-//     if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-//       fprintf(stderr, "Compilation failed\n");
-//       unlink(path);
-//       return;
-//     }
-//   }
 }
 
 int eval(char *func) {
@@ -113,5 +115,6 @@ int eval(char *func) {
 
   // 关闭共享库
   dlclose(handle);
+  unlink(so_path);
   return result;
 }
