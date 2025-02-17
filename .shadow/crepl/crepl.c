@@ -52,6 +52,7 @@ void create_tmp_file() {
     perror("mkstemp");
     exit(EXIT_FAILURE);
   }
+  close(fd);
 }
 
 void complie_shared_lib(char *line, int compile) {
@@ -69,7 +70,7 @@ void complie_shared_lib(char *line, int compile) {
     pid_t pid = fork();
     if (pid == 0) {
       snprintf(so_path, sizeof(so_path), "%s.so", path);
-      execlp("gcc", "gcc", "-shared", "-fPIC", "-o", so_path, path, NULL);
+      execlp("gcc", "gcc", "-shared","-x", "c", "-fPIC", "-o", so_path, path, NULL);
       perror("execlp");
       exit(EXIT_FAILURE);
     }
