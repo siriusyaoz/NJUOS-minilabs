@@ -11,7 +11,7 @@ void complie_shared_lib(char *line);
 int eval(char *line);
 void create_tmp_file();
 
-static char path[] = "/tmp/crepl_functions.c";
+static char path[] = "/tmp/crepl_functionsXXXXXX";
 static char so_path[] = "/tmp/crepl_functions.so";
 
 int main(int argc, char *argv[]) {
