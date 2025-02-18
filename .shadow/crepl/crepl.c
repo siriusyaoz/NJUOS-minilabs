@@ -7,7 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
-void complie_shared_lib(char* line);
+int complie_shared_lib(char* line);
 int eval(char* line);
 void create_tmp_file();
 void remove_last_line(const char* filename);
@@ -37,18 +37,19 @@ int main(int argc, char* argv[]) {
 
     if (strncmp(line, c, 3) == 0) {
       complie_shared_lib(line);
-
       fflush(stdout);
     } else {
       char new_line[1100];
       snprintf(new_line, sizeof(new_line),
                "int __expr_wrapper_%d() {return %s;}", index, line);
       printf("%s\n", new_line);
-      complie_shared_lib(new_line);
-      snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
-      printf("result is %d\n", eval(new_line));
-      fflush(stdout);
-      index++;
+      //若编译成功，再执行
+      if (complie_shared_lib(new_line) == 0) {
+        snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
+        printf("result is %d\n", eval(new_line));
+        fflush(stdout);
+        index++;
+      }
     }
   }
   unlink(path);
@@ -63,7 +64,7 @@ void create_tmp_file() {
   close(fd);
 }
 
-void complie_shared_lib(char* line) {
+int complie_shared_lib(char* line) {
   FILE* fp = fopen(path, "a");
   if (!fp) {
     perror("fopen");
@@ -77,7 +78,7 @@ void complie_shared_lib(char* line) {
   // snprintf(so_path, sizeof(so_path), "%s.so", path);
   pid_t pid = fork();
   if (pid == 0) {
-    execlp("gcc", "gcc", "-Werror","-shared", "-x", "c", "-fPIC", "-o",
+    execlp("gcc", "gcc", "-Werror", "-shared", "-x", "c", "-fPIC", "-o",
            "crepl_functions.so", path, NULL);
     perror("execlp");
     exit(EXIT_FAILURE);
@@ -88,9 +89,10 @@ void complie_shared_lib(char* line) {
     if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
       fprintf(stderr, "Compilation failed\n");
       remove_last_line(path);
-      return;
-    }else{
+      return -1;
+    } else {
       printf("Added function: %s\n", line);
+      return 0;
     }
   }
 }
