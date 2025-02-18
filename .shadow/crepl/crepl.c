@@ -79,7 +79,6 @@ void complie_shared_lib(char *line, int compile) {
     snprintf(so_path, sizeof(so_path), "%s.so", path);
     pid_t pid = fork();
     if (pid == 0) {
-
       execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o", so_path, path,
              NULL);
       perror("execlp");
@@ -104,6 +103,7 @@ int eval(char *func) {
   char *error;
 
   // 打开共享库
+  dlerror();
   handle = dlopen(so_path, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
@@ -118,7 +118,6 @@ int eval(char *func) {
   if ((error = dlerror()) != NULL) {
     fprintf(stderr, "%s\n", error);
     dlclose(handle);
-    unlink(so_path);
     return -1;
   }
 
