@@ -92,8 +92,6 @@ void complie_shared_lib(char *line, int compile) {
         fprintf(stderr, "Compilation failed\n");
         unlink(path);
         return;
-      }else{
-        printf("Compilation success\n");
       }
     }
   }
@@ -109,7 +107,7 @@ int eval(char *func) {
   handle = dlopen(so_path, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
-    return 1;
+    return -1;
   }
 
   // 清除现有的错误
@@ -121,7 +119,7 @@ int eval(char *func) {
     fprintf(stderr, "%s\n", error);
     dlclose(handle);
     unlink(so_path);
-    return 1;
+    return -1;
   }
 
   // 调用函数
