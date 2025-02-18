@@ -51,7 +51,6 @@ int main(int argc, char *argv[]) {
     }
   }
   unlink(path);
-  unlink(so_path);
 }
 
 void create_tmp_file() {
@@ -125,6 +124,6 @@ int eval(char *func) {
 
   // 关闭共享库
   dlclose(handle);
-
+  unlink(so_path);
   return result;
 }
