@@ -13,7 +13,12 @@ void create_tmp_file();
 void remove_last_line(const char* filename);
 
 static char path[] = "crepl_functionsXXXXXX";
+ //这里要加上./,否则会报错，不清楚原因
 static char so_path[] = "./crepl_functions.so";
+
+//将所有输入的函数/表达式存到一个文件中去，进行编译。编译不通过，则将刚刚加入的一行删去。
+//如果是表达式且编译通过，则求值
+//输入 quit 退出crepl程序
 int main(int argc, char* argv[]) {
   static char line[1024];
   char c[] = "int";
@@ -100,7 +105,7 @@ int complie_shared_lib(char* line) {
 int eval(char* func) {
   // Step 3: Load the shared library and get the function pointer
   void* handle;
-  int (*foo)(void);  // 假设foo是一个无参数且返回int的函数
+  int (*foo)(void);  // wrapper函数都是这种类型的
   char* error;
 
   // 打开共享库
