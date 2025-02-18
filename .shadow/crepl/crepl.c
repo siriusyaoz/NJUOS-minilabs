@@ -87,7 +87,6 @@ void complie_shared_lib(char *line, int compile) {
       waitpid(pid, &status, 0);
       if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
         fprintf(stderr, "Compilation failed\n");
-        unlink(path);
         return;
       }
     }
