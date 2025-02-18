@@ -28,7 +28,10 @@ int main(int argc, char *argv[]) {
     }
 
     // To be implemented.
-    printf("Got %zu chars.\n", strlen(line));
+    //printf("Got %zu chars.\n", strlen(line));
+    if(strncmp(line,"quit",4)==0){
+      break;
+    }
 
     if (strncmp(line, c, 3) == 0) {
       complie_shared_lib(line, 0);
