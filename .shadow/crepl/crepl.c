@@ -105,19 +105,19 @@ int eval(char *func) {
   handle = dlopen(so_path, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
-    exit(EXIT_FAILURE);
+    return 1;
   }
 
   // 清除现有的错误
   dlerror();
-
+  printf("Looking for symbol:%s\n", func); // 确认符号名称
   // 获取foo函数的地址
   *(void **)(&foo) = dlsym(handle, func);
   if ((error = dlerror()) != NULL) {
     fprintf(stderr, "%s\n", error);
     dlclose(handle);
     unlink(so_path);
-    exit(EXIT_FAILURE);
+    return 1;
   }
 
   // 调用函数
