@@ -10,6 +10,7 @@
 void complie_shared_lib(char *line, int compile);
 int eval(char *line);
 void create_tmp_file();
+void remove_last_line(const char *filename);
 
 static char path[] = "crepl_functionsXXXXXX";
 static char so_path[] = "./crepl_functions.so";
@@ -87,6 +88,7 @@ void complie_shared_lib(char *line, int compile) {
       waitpid(pid, &status, 0);
       if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
         fprintf(stderr, "Compilation failed\n");
+        remove_last_line(path);
         return;
       }
     }
@@ -124,4 +126,40 @@ int eval(char *func) {
   dlclose(handle);
   unlink(so_path);
   return result;
+}
+
+void remove_last_line(const char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+      perror("fopen");
+      return;
+  }
+
+  // 读取所有行到内存中（除了最后一行）
+  char **lines = malloc(sizeof(char *) * 1024);  // 假设最多1024行
+  int line_count = 0;
+  char buffer[1024];
+  
+  while (fgets(buffer, sizeof(buffer), fp)) {
+      // 去掉每行末尾的换行符
+      buffer[strcspn(buffer, "\n")] = 0;
+      lines[line_count] = strdup(buffer);
+      line_count++;
+  }
+  fclose(fp);
+
+  // 重写文件，不写入最后一行
+  fp = fopen(filename, "w");
+  if (!fp) {
+      perror("fopen");
+      return;
+  }
+  
+  for (int i = 0; i < line_count - 1; i++) {
+      fprintf(fp, "%s\n", lines[i]);
+      free(lines[i]);  // 释放内存
+  }
+  free(lines[line_count - 1]);  // 释放最后一行的内存
+  free(lines);  // 释放数组内存
+  fclose(fp);
 }
