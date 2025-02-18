@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
       char new_line[1100];
       snprintf(new_line, sizeof(new_line),
                "int __expr_wrapper_%d() {return %s;}", index, line);
-      printf("%s\n", new_line);
+      //printf("%s\n", new_line);
       //若编译成功，再执行
       if (complie_shared_lib(new_line) == 0) {
         snprintf(new_line, sizeof(new_line), "__expr_wrapper_%d", index);
