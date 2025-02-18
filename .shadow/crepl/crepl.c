@@ -105,7 +105,6 @@ int eval(char *func) {
   handle = dlopen(so_path, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
-    dlclose(handle);
     exit(EXIT_FAILURE);
   }
 
@@ -117,6 +116,7 @@ int eval(char *func) {
   if ((error = dlerror()) != NULL) {
     fprintf(stderr, "%s\n", error);
     dlclose(handle);
+    unlink(so_path);
     exit(EXIT_FAILURE);
   }
 
