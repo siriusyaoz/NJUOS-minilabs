@@ -12,7 +12,7 @@ int eval(char *line);
 void create_tmp_file();
 
 static char path[] = "crepl_functionsXXXXXX";
-static char so_path[] ="crepl_functions.so";
+static char so_path[] = "./crepl_functions.so";
 int main(int argc, char *argv[]) {
   static char line[1024];
   char c[] = "int";
@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
     line[strcspn(line, "\n")] = '\0';
 
     // To be implemented.
-    //printf("Got %zu chars.\n", strlen(line));
-    if(strncmp(line,"quit",4)==0){
+    // printf("Got %zu chars.\n", strlen(line));
+    if (strncmp(line, "quit", 4) == 0) {
       break;
     }
 
@@ -73,13 +73,12 @@ void complie_shared_lib(char *line, int compile) {
   fprintf(fp, "%s\n", line); // 将函数定义写入临时文件
   fclose(fp);
 
-
   if (compile) {
-    //snprintf(so_path, sizeof(so_path), "%s.so", path);
+    // snprintf(so_path, sizeof(so_path), "%s.so", path);
     pid_t pid = fork();
     if (pid == 0) {
-      execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o", so_path, path,
-             NULL);
+      execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o",
+             "crepl_functions.so", path, NULL);
       perror("execlp");
       exit(EXIT_FAILURE);
     } else {
