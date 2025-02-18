@@ -12,7 +12,7 @@ int eval(char *line);
 void create_tmp_file();
 
 static char path[] = "crepl_functionsXXXXXX";
-static char so_path[25];
+static char so_path[] ="crepl_functions.so";
 int main(int argc, char *argv[]) {
   static char line[1024];
   char c[] = "int";
@@ -76,7 +76,7 @@ void complie_shared_lib(char *line, int compile) {
 
 
   if (compile) {
-    snprintf(so_path, sizeof(so_path), "%s.so", path);
+    //snprintf(so_path, sizeof(so_path), "%s.so", path);
     pid_t pid = fork();
     if (pid == 0) {
       execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o", so_path, path,
@@ -103,7 +103,6 @@ int eval(char *func) {
   char *error;
 
   // 打开共享库
-  dlerror();
   handle = dlopen(so_path, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
