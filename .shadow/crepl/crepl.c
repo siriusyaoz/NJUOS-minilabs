@@ -77,7 +77,7 @@ void complie_shared_lib(char* line) {
   // snprintf(so_path, sizeof(so_path), "%s.so", path);
   pid_t pid = fork();
   if (pid == 0) {
-    execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o",
+    execlp("gcc", "gcc", "-Werror","-shared", "-x", "c", "-fPIC", "-o",
            "crepl_functions.so", path, NULL);
     perror("execlp");
     exit(EXIT_FAILURE);
