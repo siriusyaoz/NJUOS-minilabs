@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 
     if (strncmp(line, c, 3) == 0) {
       complie_shared_lib(line);
-      printf("Added function: %s\n", line);
+
       fflush(stdout);
     } else {
       char new_line[1100];
@@ -89,6 +89,8 @@ void complie_shared_lib(char* line) {
       fprintf(stderr, "Compilation failed\n");
       remove_last_line(path);
       return;
+    }else{
+      printf("Added function: %s\n", line);
     }
   }
 }
@@ -108,7 +110,7 @@ int eval(char* func) {
 
   // 清除现有的错误
   dlerror();
-  printf("Looking for symbol:%s\n", func);  // 确认符号名称
+  // printf("Looking for symbol:%s\n", func);  // 确认符号名称
   // 获取foo函数的地址
   *(void**)(&foo) = dlsym(handle, func);
   if ((error = dlerror()) != NULL) {
