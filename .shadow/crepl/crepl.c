@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
     if (!fgets(line, sizeof(line), stdin)) {
       break;
     }
+    line[strcspn(line, "\n")] = '\0';
 
     // To be implemented.
     //printf("Got %zu chars.\n", strlen(line));
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]) {
     }
   }
   unlink(path);
+  unlink(so_path);
 }
 
 void create_tmp_file() {
@@ -72,10 +74,12 @@ void complie_shared_lib(char *line, int compile) {
   fprintf(fp, "%s\n", line); // 将函数定义写入临时文件
   fclose(fp);
 
+
   if (compile) {
+    snprintf(so_path, sizeof(so_path), "%s.so", path);
     pid_t pid = fork();
     if (pid == 0) {
-      snprintf(so_path, sizeof(so_path), "%s.so", path);
+
       execlp("gcc", "gcc", "-shared", "-x", "c", "-fPIC", "-o", so_path, path,
              NULL);
       perror("execlp");
@@ -125,6 +129,6 @@ int eval(char *func) {
 
   // 关闭共享库
   dlclose(handle);
-  unlink(so_path);
+
   return result;
 }
