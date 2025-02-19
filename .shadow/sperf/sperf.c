@@ -139,7 +139,7 @@ int parse_strace_line(const char *line, SyscallInfo *info) {
   regex_t regex;
   regmatch_t matches[MAX_MATCHES];
   int ret;
-  const char *pattern = "^([[:alnum:]]+)\\(.*\\)\\s*=\\s*-?[[:digit:]]+\\s*<([[:digit:].]+)>$";
+  char *pattern = "^([[:alnum:]]+)\\(.*\\)\\s*=\\s*-?[[:digit:]]+\\s*<([[:digit:].]+)>$";
 
   // 编译正则表达式
   if (regcomp(&regex, pattern, REG_EXTENDED)) {
