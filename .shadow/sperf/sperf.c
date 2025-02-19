@@ -23,7 +23,7 @@ typedef struct {
 
 extern char **environ;
 
-char** build_new_argv(int argc, char* argv[]);
+char **build_new_argv(int argc, char *argv[]);
 uint minus(struct timespec a, struct timespec b);
 int syscall_array_init(SyscallArray *arr, size_t initial_capacity);
 int syscall_array_add(SyscallArray *arr, const SyscallInfo *info);
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
   pid_t pid = fork();
   if (pid == 0) {
-    for (int i = 0; i < argc+1; i++) {
+    for (int i = 0; i < argc + 1; i++) {
       assert(newargv[i]);
       printf("newargv[%d] = %s\n", i, newargv[i]);
     }
@@ -79,21 +79,21 @@ int main(int argc, char *argv[]) {
 
     while (fgets(line, sizeof(line), fp) != NULL) {
       clock_gettime(CLOCK_MONOTONIC, &now);
-      //printf("(parent process) Line: %s", line);
-      //printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
+      // printf("(parent process) Line: %s", line);
+      // printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
 
       // process statstics here
       line[strcspn(line, "\n")] = 0;
       parse_strace_line(line, &info);
-      //printf("syscall is %s,time is %lf\n",info.syscall,info.time_seconds);
+      // printf("syscall is %s,time is %lf\n",info.syscall,info.time_seconds);
       syscall_array_add(&arr, &info);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
         // print the data in this interval
         qsort(arr.entries, arr.count, sizeof(SyscallInfo), comp_sys_info);
-        printf("time passed :%fs\n",(minus(now, start)/(double)BILLION));
+        printf("time passed :%fs\n", (minus(now, start) / (double)BILLION));
         for (int i = 0; i < MIN(5, arr.count); i++) {
-          int percent=  arr.entries[i].time_seconds *100/arr.total_time;
+          int percent = arr.entries[i].time_seconds * 100 / arr.total_time;
           printf("%s (%d%%)\n", arr.entries[i].syscall, percent);
         }
         printf("======================\n");
@@ -106,24 +106,25 @@ int main(int argc, char *argv[]) {
   }
   return 0;
 }
-char** build_new_argv(int argc, char* argv[]) {
+char **build_new_argv(int argc, char *argv[]) {
   // 计算新参数数组的长度
-  int new_argc = argc + 1;  // 去掉 argv[0]，添加 "strace" 和 "-T"
+  int new_argc = argc + 1; // 去掉 argv[0]，添加 "strace" 和 "-T"
 
   // 分配内存
-  char** new_argv = malloc((new_argc + 1) * sizeof(char*));  // +1 用于 NULL 结尾
+  char **new_argv =
+      malloc((new_argc + 1) * sizeof(char *)); // +1 用于 NULL 结尾
   if (!new_argv) {
-      perror("malloc failed");
-      return NULL;
+    perror("malloc failed");
+    return NULL;
   }
 
   // 构建新参数数组
-  new_argv[0] = "strace";  // 第一个参数
-  new_argv[1] = "-T";      // 第二个参数
+  new_argv[0] = "strace"; // 第一个参数
+  new_argv[1] = "-T";     // 第二个参数
 
   // 复制剩余参数
   for (int i = 1; i < argc; i++) {
-      new_argv[i + 1] = argv[i];
+    new_argv[i + 1] = argv[i];
   }
 
   // 最后一个元素设置为 NULL
@@ -232,5 +233,9 @@ void syscall_array_free(SyscallArray *arr) {
 static int comp_sys_info(const void *va, const void *vb) {
   SyscallInfo a = *(SyscallInfo *)va;
   SyscallInfo b = *(SyscallInfo *)vb;
-  return (b.time_seconds - a.time_seconds);
+  if (b.time_seconds > a.time_seconds)
+    return 1;
+  if (b.time_seconds < a.time_seconds)
+    return -1;
+  return 0;
 }
