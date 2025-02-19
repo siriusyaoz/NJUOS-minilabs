@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     }
 
     while (fgets(line, sizeof(line), fp) != NULL) {
-      printf("Line: %s", line);
+      printf("(parent process) Line: %s", line);
       // process statstics here
       parse_strace_line(line, &info);
       syscall_array_add(arr, &info);
