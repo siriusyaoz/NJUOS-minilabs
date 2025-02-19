@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   pipe(fd);
   struct timespec start;
   clock_gettime(CLOCK_MONOTONIC, &start);
-  uint interval_ns = 100 * 1000000;
+  uint interval_ns = 10 * 1000000;
 
   pid_t pid = fork();
   if (pid == 0) {
