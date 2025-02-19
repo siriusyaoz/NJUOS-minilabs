@@ -23,6 +23,7 @@ typedef struct {
 
 extern char **environ;
 
+char** build_new_argv(int argc, char* argv[]);
 uint minus(struct timespec a, struct timespec b);
 int syscall_array_init(SyscallArray *arr, size_t initial_capacity);
 int syscall_array_add(SyscallArray *arr, const SyscallInfo *info);
@@ -37,8 +38,8 @@ int main(int argc, char *argv[]) {
     printf("argv[%d] = %s\n", i, argv[i]);
   }
   assert(!argv[argc]);
-  char *filename = argv[0];
-  char **newargv = ++argv;
+  char *filename = "strace";
+  char **newargv = build_new_argv(argc, argv);
 
   int fd[2];
   pipe(fd);
@@ -51,7 +52,7 @@ int main(int argc, char *argv[]) {
     dup2(fd[1], 1);
     close(fd[1]);
     close(fd[0]);
-    for (int i = 0; i < argc-1; i++) {
+    for (int i = 0; i < argc+1; i++) {
       assert(newargv[i]);
       printf("newargv[%d] = %s\n", i, newargv[i]);
     }
@@ -97,6 +98,32 @@ int main(int argc, char *argv[]) {
   }
   return 0;
 }
+char** build_new_argv(int argc, char* argv[]) {
+  // 计算新参数数组的长度
+  int new_argc = argc + 1;  // 去掉 argv[0]，添加 "strace" 和 "-T"
+
+  // 分配内存
+  char** new_argv = malloc((new_argc + 1) * sizeof(char*));  // +1 用于 NULL 结尾
+  if (!new_argv) {
+      perror("malloc failed");
+      return NULL;
+  }
+
+  // 构建新参数数组
+  new_argv[0] = "strace";  // 第一个参数
+  new_argv[1] = "-T";      // 第二个参数
+
+  // 复制剩余参数
+  for (int i = 1; i < argc; i++) {
+      new_argv[i + 1] = argv[i];
+  }
+
+  // 最后一个元素设置为 NULL
+  new_argv[new_argc] = NULL;
+
+  return new_argv;
+}
+
 uint minus(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * BILLION + a.tv_nsec - b.tv_nsec;
 }
