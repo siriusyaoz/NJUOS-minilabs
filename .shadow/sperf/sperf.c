@@ -82,8 +82,9 @@ int main(int argc, char *argv[]) {
       printf("(parent process) Line: %s", line);
       printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
       // process statstics here
+      line[strcspn(line, "\n")] = 0;
       parse_strace_line(line, &info);
-      printf("syscall is %s,time is %lf",info.syscall,info.time_seconds);
+      printf("syscall is %s,time is %lf\n",info.syscall,info.time_seconds);
       syscall_array_add(&arr, &info);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
