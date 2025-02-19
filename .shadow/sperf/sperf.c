@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
       printf("newargv[%d] = %s\n", i, newargv[i]);
     }
     fflush(stdout);
-
+    dup2(fd[1], 1);
     dup2(fd[1], 2);
     close(fd[1]);
     close(fd[0]);
@@ -137,7 +137,7 @@ int parse_strace_line(const char *line, SyscallInfo *info) {
   regex_t regex;
   regmatch_t matches[MAX_MATCHES];
   int ret;
-  const char *pattern = "^([a-zA-Z0-9_]+)$.*$\\s*=\\s*.*<([0-9.]+)>$";
+  const char *pattern = "^([[:alnum:]]+)\\(.*\\)\\s*=\\s*-?[[:digit:]]+\\s*<([[:digit:].]+)>$";
 
   // 编译正则表达式
   if (regcomp(&regex, pattern, REG_EXTENDED)) {
