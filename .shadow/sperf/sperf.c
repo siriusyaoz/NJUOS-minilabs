@@ -96,8 +96,9 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < MIN(5, arr.count); i++) {
 
           //int percent = arr.entries[i].time_seconds * 100 / arr.total_time;
+          //syscall time percent of system passed time
           int percent = arr.entries[i].time_seconds * 100 /(minus(now, start)/ (double)BILLION);
-          printf("%s (%d%%)\n", arr.entries[i].syscall, percent);
+          printf("%s (%d%%) %fs\n", arr.entries[i].syscall, percent,arr.entries[i].time_seconds);
         }
         printf("======================\n");
         start = now;
