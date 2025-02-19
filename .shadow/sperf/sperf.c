@@ -49,13 +49,16 @@ int main(int argc, char *argv[]) {
 
   pid_t pid = fork();
   if (pid == 0) {
-    dup2(fd[1], 1);
-    close(fd[1]);
-    close(fd[0]);
     for (int i = 0; i < argc+1; i++) {
       assert(newargv[i]);
       printf("newargv[%d] = %s\n", i, newargv[i]);
     }
+    fflush(stdout);
+
+    dup2(fd[1], 2);
+    close(fd[1]);
+    close(fd[0]);
+
     execve(filename, newargv, environ);
     perror("execve");
   } else {
@@ -68,9 +71,9 @@ int main(int argc, char *argv[]) {
     }
     char line[1024];
 
-    SyscallArray *arr=NULL;
+    SyscallArray arr;
     SyscallInfo info;
-    if (syscall_array_init(arr, 16) == -1) {
+    if (syscall_array_init(&arr, 16) == -1) {
       perror("syscall init failed");
     }
 
@@ -78,23 +81,24 @@ int main(int argc, char *argv[]) {
       printf("(parent process) Line: %s", line);
       // process statstics here
       parse_strace_line(line, &info);
-      syscall_array_add(arr, &info);
+      syscall_array_add(&arr, &info);
       clock_gettime(CLOCK_MONOTONIC, &now);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
         // print the data in this interval
-        qsort(arr->entries, arr->count, sizeof(SyscallInfo), comp_sys_info);
+        qsort(arr.entries, arr.count, sizeof(SyscallInfo), comp_sys_info);
         printf("time passed :%.2lf\n",(now.tv_sec+ now.tv_nsec/(double)BILLION));
-        for (int i = 0; i < MIN(5, arr->count); i++) {
-          int percent=  arr->entries[i].time_seconds *100/arr->total_time;
-          printf("%s (%d%%)\n", arr->entries[i].syscall, percent);
+        for (int i = 0; i < MIN(5, arr.count); i++) {
+          int percent=  arr.entries[i].time_seconds *100/arr.total_time;
+          printf("%s (%d%%)\n", arr.entries[i].syscall, percent);
         }
         printf("======================\n");
         start = now;
-        syscall_array_reset(arr);
+        syscall_array_reset(&arr);
       }
     }
-    close(fd[0]);
+    fclose(fp);
+    syscall_array_free(&arr);
   }
   return 0;
 }
