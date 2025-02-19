@@ -79,12 +79,13 @@ int main(int argc, char *argv[]) {
 
     while (fgets(line, sizeof(line), fp) != NULL) {
       clock_gettime(CLOCK_MONOTONIC, &now);
-      printf("(parent process) Line: %s", line);
-      printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
+      //printf("(parent process) Line: %s", line);
+      //printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
+
       // process statstics here
       line[strcspn(line, "\n")] = 0;
       parse_strace_line(line, &info);
-      printf("syscall is %s,time is %lf\n",info.syscall,info.time_seconds);
+      //printf("syscall is %s,time is %lf\n",info.syscall,info.time_seconds);
       syscall_array_add(&arr, &info);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
@@ -231,12 +232,5 @@ void syscall_array_free(SyscallArray *arr) {
 static int comp_sys_info(const void *va, const void *vb) {
   SyscallInfo a = *(SyscallInfo *)va;
   SyscallInfo b = *(SyscallInfo *)vb;
-  double time = a.time_seconds < b.time_seconds;
-  if (time < 0) {
-    return -1;
-  } else if (time > 0) {
-    return 1;
-  } else {
-    return 0;
-  }
+  return (b.time_seconds - a.time_seconds);
 }
