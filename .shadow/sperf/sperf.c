@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       if (minus(now, start) >= interval_ns) {
         // print the data in this interval
         qsort(arr.entries, arr.count, sizeof(SyscallInfo), comp_sys_info);
-        printf("time passed :%.2lf\n",(now.tv_sec+ now.tv_nsec/(double)BILLION));
+        printf("time passed :%fs\n",(minus(now, start)/(double)BILLION));
         for (int i = 0; i < MIN(5, arr.count); i++) {
           int percent=  arr.entries[i].time_seconds *100/arr.total_time;
           printf("%s (%d%%)\n", arr.entries[i].syscall, percent);
