@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     dup2(fd[1], 1);
     close(fd[1]);
     close(fd[0]);
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i < argc-1; i++) {
       assert(newargv[i]);
       printf("argv[%d] = %s\n", i, newargv[i]);
     }
