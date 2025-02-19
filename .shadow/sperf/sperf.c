@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
     }
     char line[1024];
 
-    SyscallArray *arr;
-    SyscallInfo *info;
+    SyscallArray *arr=NULL;
+    SyscallInfo info;
     if (syscall_array_init(arr, 16) == -1) {
       perror("syscall init failed");
     }
@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
     while (fgets(line, sizeof(line), fp) != NULL) {
       printf("Line: %s", line);
       // process statstics here
-      parse_strace_line(line, info);
-      syscall_array_add(arr, info);
+      parse_strace_line(line, &info);
+      syscall_array_add(arr, &info);
       clock_gettime(CLOCK_MONOTONIC, &now);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
