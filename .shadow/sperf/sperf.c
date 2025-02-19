@@ -94,8 +94,9 @@ int main(int argc, char *argv[]) {
         qsort(arr.entries, arr.count, sizeof(SyscallInfo), comp_sys_info);
         printf("time passed :%fs\n", (minus(now, start) / (double)BILLION));
         for (int i = 0; i < MIN(5, arr.count); i++) {
+
           //int percent = arr.entries[i].time_seconds * 100 / arr.total_time;
-          int percent = arr.entries[i].time_seconds * 100 /minus(now, start);
+          int percent = arr.entries[i].time_seconds * 100 /(minus(now, start)/ (double)BILLION);
           printf("%s (%d%%)\n", arr.entries[i].syscall, percent);
         }
         printf("======================\n");
