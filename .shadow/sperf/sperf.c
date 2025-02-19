@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
       printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
       // process statstics here
       parse_strace_line(line, &info);
+      printf("syscall is %s,time is %lf",info.syscall,info.time_seconds);
       syscall_array_add(&arr, &info);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
