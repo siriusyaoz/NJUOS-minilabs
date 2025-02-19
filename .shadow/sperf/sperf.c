@@ -141,7 +141,7 @@ int parse_strace_line(const char *line, SyscallInfo *info) {
   regex_t regex;
   regmatch_t matches[MAX_MATCHES];
   int ret;
-  char *pattern = "^([[:alnum:]]+).*<([[:digit:].]+)>$";
+  char *pattern = "^([[:alnum:]_]+).*<([[:digit:].]+)>$";
 
   // 编译正则表达式
   if (regcomp(&regex, pattern, REG_EXTENDED)) {
