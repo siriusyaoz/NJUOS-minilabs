@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     close(fd[0]);
     for (int i = 0; i < argc-1; i++) {
       assert(newargv[i]);
-      printf("argv[%d] = %s\n", i, newargv[i]);
+      printf("newargv[%d] = %s\n", i, newargv[i]);
     }
     execve(filename, newargv, environ);
     perror("execve");
