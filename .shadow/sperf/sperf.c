@@ -78,11 +78,12 @@ int main(int argc, char *argv[]) {
     }
 
     while (fgets(line, sizeof(line), fp) != NULL) {
+      clock_gettime(CLOCK_MONOTONIC, &now);
       printf("(parent process) Line: %s", line);
+      printf("%ld.%09ld seconds\n",now.tv_sec,now.tv_nsec);
       // process statstics here
       parse_strace_line(line, &info);
       syscall_array_add(&arr, &info);
-      clock_gettime(CLOCK_MONOTONIC, &now);
       //超过100ms
       if (minus(now, start) >= interval_ns) {
         // print the data in this interval
