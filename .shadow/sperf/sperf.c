@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     printf("argv[%d] = %s\n", i, argv[i]);
   }
   assert(!argv[argc]);
-  char *filename = "strace";
+  char *filename = "/usr/bin/strace";
   char **newargv = build_new_argv(argc, argv);
 
   int fd[2];
