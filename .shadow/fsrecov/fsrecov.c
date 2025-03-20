@@ -56,13 +56,16 @@ void *mmap_disk(const char *fname) {
     assert(hdr->Signature_word == 0xaa55); // this is an MBR
     assert(hdr->BPB_TotSec32 * hdr->BPB_BytsPerSec == size);
 
-    printf("%s: DOS/MBR boot sector, ", fname);
-    printf("OEM-ID \"%s\", ", hdr->BS_OEMName);
-    printf("sectors/cluster %d, ", hdr->BPB_SecPerClus);
-    printf("sectors %d, ", hdr->BPB_TotSec32);
-    printf("sectors %d, ", hdr->BPB_TotSec32);
-    printf("sectors/FAT %d, ", hdr->BPB_FATSz32);
+    printf("%s: DOS/MBR boot sector \n", fname);
+    printf("OEM-ID \"%s\"\n", hdr->BS_OEMName);
+    printf("sectors/cluster %d \n ", hdr->BPB_SecPerClus);
+    printf("sectors %d \n", hdr->BPB_TotSec32);
+    printf("sectors/FAT %d \n", hdr->BPB_FATSz32);
     printf("serial number 0x%x\n", hdr->BS_VolID);
+    printf("reserved sectors cnt %d\n",hdr->BPB_RsvdSecCnt);
+    printf("num fats %d\n",hdr->BPB_NumFATs);
+    printf("Sector number of FSINFO structure in the reserved area \
+        of the FAT32 volume is %d.\n",hdr->BPB_FSInfo);
     return hdr;
 
 release:
