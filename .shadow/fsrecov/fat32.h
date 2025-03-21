@@ -58,7 +58,7 @@ struct fat32LongNamedent{
     u8  LDIR_Type;
     u8  LDIR_Chksum;
     u16  LDIR_Name2[6];
-    u8  LDIR_FstClusLO;
+    u16  LDIR_FstClusLO;
     u16  LDIR_Name3[2];    
 }__attribute__((packed));
 
