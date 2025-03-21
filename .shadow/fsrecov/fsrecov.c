@@ -162,24 +162,20 @@ release:
   exit(1);
 }
 
-struct fat32dent *is_dir_type(struct fat32dent *dent) {
+int is_dir_type(struct fat32dent *dent) {
   //扫描cluster之后的该cluster的所有字符，若出现多次BMP字符，则为DIRtype
   int count = 0;
   char *p;
   int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
-  char *firstbmp=p;
   //从第8个字符开始检查是否是"bmp"
   for (int i = 8; i < cluster_bytes - 32; i++) {
     p = (char *)dent + i;
     if (memcmp(p, "bmp", 3) == 0) {
       count++;
     }
-    if (count == 1) {
-      firstbmp = p;
+    if (count > 3) {
+      return 1;
     }
-  }
-  if (count > 3) {
-    return (struct fat32dent *)(firstbmp - 8);
   }
   return NULL;
 }
