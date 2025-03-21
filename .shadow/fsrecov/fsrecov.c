@@ -47,7 +47,7 @@ typedef struct {
 
 typedef struct {
   char shortname[32];
-  char longname[64];
+  u16 longname[64];
   u32 dataClus;
   u32 size;
   u8 checksum;
