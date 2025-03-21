@@ -238,8 +238,7 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
   }
 }
 void write_to_temp_file(void *data, bmpfile bmpf) {
-  char temp_path[64] ; // 模板路径
-  snprintf(temp_path, sizeof(temp_path), "/tmp/tempfile%.5s", bmpf.shortname); // 使用snprintf拼接字符串
+  char temp_path[] = "/tmp/tempfileXXXXXX";
   int fd = mkstemp(temp_path);        // 创建临时文件
   if (fd < 0) {
     perror("mkstemp");
