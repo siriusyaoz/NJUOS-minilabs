@@ -349,7 +349,7 @@ int scan_dents_in_cluster(int clusId, clusterInfo *clusters,FILE* fp) {
         printf("bmp file sha1: %s\n", bmpf.sha1);
         get_longname(dent, &bmpf);
         printf("dent long name[%-12s]   ", bmpf.longname);
-        fprintf(fp, "%s %s\n", bmpf.sha1, bmpf.longname);
+        fprintf(fp, "%s  %s\n", bmpf.sha1, bmpf.longname);
       }
     }
     dent++;
