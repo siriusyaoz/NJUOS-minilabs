@@ -47,7 +47,7 @@ typedef struct {
 
 typedef struct {
   char shortname[32];
-  u16 longname[64];
+  char longname[64];
   u32 dataClus;
   u32 size;
   u8 checksum;
@@ -296,6 +296,7 @@ int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
         calc_sha1(&bmpf);
         printf("bmp file sha1: %s\n", bmpf.sha1);
         get_longname(dent, &bmpf);
+        printf("dent long name[%-12s]   ",bmpf.longname);
       }
     }
     dent++;
