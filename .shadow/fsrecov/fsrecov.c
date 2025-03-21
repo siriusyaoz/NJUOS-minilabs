@@ -47,10 +47,10 @@ typedef struct {
 
 typedef struct {
   char shortname[32];
-  char name[64];
+  char longname[64];
   u32 dataClus;
   u32 size;
-  int fd;
+  u8 checksum;
   char sha1[40];
 } bmpfile;
 
@@ -85,10 +85,10 @@ int main(int argc, char *argv[]) {
   int num_bmp_files = 0;
   for (int clusId = hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     if (clus_info[clusId].type == DIR) {
-      num_bmp_files+=scan_dents_in_cluster(clusId, clus_info);
+      num_bmp_files += scan_dents_in_cluster(clusId, clus_info);
     }
   }
-  printf("num of bmp files: %d\n",num_bmp_files);
+  printf("num of bmp files: %d\n", num_bmp_files);
   munmap(hdr, hdr->BPB_TotSec32 * hdr->BPB_BytsPerSec);
 }
 
@@ -169,9 +169,9 @@ int is_dir_type(struct fat32dent *dent) {
   //扫描cluster之后的该cluster的所有字符，若出现多次BMP字符，则为DIRtype
   int count = 0;
   int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
-  struct fat32dent *end = dent + cluster_bytes/32;
+  struct fat32dent *end = dent + cluster_bytes / 32;
   //从第8个字符开始检查是否是"bmp"
-  for (struct fat32dent *p=dent; p<end; p++) {
+  for (struct fat32dent *p = dent; p < end; p++) {
     if (memcmp(p->DIR_Name + 8, "BMP", 3) == 0) {
       count++;
     }
@@ -237,11 +237,85 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
     }
   }
 }
+void write_to_temp_file(void *data, int size) {
+  char temp_path[] = "/tmp/tempfile"; // 模板路径
+  int fd = mkstemp(temp_path);        // 创建临时文件
+  if (fd < 0) {
+    perror("mkstemp");
+    exit(EXIT_FAILURE);
+  }
+
+  // 将数据写入文件
+  ssize_t written = write(fd, data, size);
+  if (written < size) {
+    perror("write");
+    close(fd);
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd); // 关闭文件
+  printf("Data written to temporary file: %s\n", temp_path);
+}
+void calc_sha1(bmpfile *bmpf) {
+  void *data = cluster_address(bmpf->dataClus);
+  int size = bmpf->size;
+  // 将数据写入临时文件
+  write_to_temp_file(data, size);
+  FILE *fp = popen("sha1sum /tmp/tmpfile", "r");
+  // 替换 panic_on(fp < 0, "popen"); 为以下代码：
+  if (fp < 0) {
+    perror("popen");
+    exit(EXIT_FAILURE);
+  }
+  fscanf(fp, "%s", bmpf->sha1); // Get it!
+  pclose(fp);
+}
+void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
+  struct fat32dent *low = cluster_address(hdr->BPB_RootClus);
+  int longname_idx = 0;
+  for (int i = 1; low + i < dent; i++) {
+    struct fat32LongNamedent *longName = (struct fat32LongNamedent *)(dent - i);
+    assert(longName->LDIR_Attr == ATTR_LONG_NAME);
+    assert(longName->LDIR_Ord == i ||
+           longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
+    if (i == 1) {
+      //记录checksum之后验证
+      bmpf->checksum = longName->LDIR_Chksum;
+    }
+    for (int j = 0; j < 5; j++) {
+      u16 c = longName->LDIR_Name1[j];
+      if (c == 0xFFFF)
+        break; // 结束符
+      bmpf->longname[longname_idx++] = c;
+    }
+
+    // 第2部分（6字符）
+    for (int j = 0; j < 6; j++) {
+      u16 c = longName->LDIR_Name2[j];
+      if (c == 0xFFFF)
+        break;
+      bmpf->longname[longname_idx++] = c;
+    }
+
+    // 第3部分（2字符）
+    for (int j = 0; j < 2; j++) {
+      u16 c = longName->LDIR_Name3[j];
+      if (c == 0xFFFF)
+        break;
+      bmpf->longname[longname_idx++] = c;
+    }
+
+    if (longName->LDIR_Ord & LAST_LONG_ENTRY) {
+      break;
+    }
+  }
+}
+
 int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
   struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId);
   struct fat32dent *end = (struct fat32dent *)cluster_address(clusId + 1);
   bmpfile bmpf;
-  int count=0;
+  int count = 0;
   while (dent < end) {
     if (memcmp(dent->DIR_Name + 8, "BMP", 3) == 0) {
       get_filename(dent, bmpf.shortname);
@@ -253,6 +327,9 @@ int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
         printf("dent short name[%-12s] %6.1lf KiB    ", dent->DIR_Name,
                dent->DIR_FileSize / 1024.0);
         printf("dent bmp file data clus :%d\n", bmpf.dataClus);
+        calc_sha1(&bmpf);
+        printf("bmp file sha1: %s\n", bmpf.sha1);
+        get_longname(dent, &bmpf);
       }
     }
     dent++;
