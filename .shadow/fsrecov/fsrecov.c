@@ -172,7 +172,7 @@ int is_dir_type(struct fat32dent *dent) {
     if (memcmp(p, "BMP", 3) == 0) {
       count++;
     }
-    if (count > 3) {
+    if (count > 2) {
       return 1;
     }
   }
