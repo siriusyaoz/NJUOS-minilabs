@@ -242,7 +242,7 @@ void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
   for (int i = 1; low + i < dent; i++) {
     struct fat32LongNamedent *longName = (struct fat32LongNamedent *)(dent - i);
     if (longName->LDIR_Attr == ATTR_LONG_NAME) {
-      //assert(longName->LDIR_Ord == i ||longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
+      assert(longName->LDIR_Ord == i ||longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
       if (i == 1) {
         //记录checksum之后验证
         bmpf->checksum = longName->LDIR_Chksum;
