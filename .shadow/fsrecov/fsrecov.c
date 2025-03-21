@@ -237,8 +237,7 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
     }
   }
 }
-char* write_to_temp_file(void *data, bmpfile bmpf) {
-  char temp_path[] = "/tmp/tempfileXXXXXX";
+void write_to_temp_file(char temp_path[],void *data, bmpfile bmpf) {
   int fd = mkstemp(temp_path);        // 创建临时文件
   if (fd < 0) {
     perror("mkstemp");
@@ -261,9 +260,10 @@ void calc_sha1(bmpfile *bmpf) {
   void *data = cluster_address(bmpf->dataClus);
   int size = bmpf->size;
   // 将数据写入临时文件
-  char* filename=write_to_temp_file(data, *bmpf);
+  char temp_path[] = "/tmp/tempfileXXXXXX";
+  write_to_temp_file(temp_path,data, *bmpf);
   char command[256];
-  sprintf(command, "sha1sum %s", filename);
+  sprintf(command, "sha1sum %s", temp_path);
   FILE *fp = popen(command, "r");
   // 替换 panic_on(fp < 0, "popen"); 为以下代码：
   if (fp < 0) {
