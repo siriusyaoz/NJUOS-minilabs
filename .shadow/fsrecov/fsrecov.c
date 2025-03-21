@@ -239,7 +239,7 @@ void calc_sha1(bmpfile *bmpf) {
 }
 
 void utf16_to_utf8(const u16 *src, char *dst, size_t dst_size) {
-  iconv_t cd = iconv_open("UTF-8", "UTF-16LE");
+  iconv_t cd = iconv_open("UTF-8", "UTF-16");
   if (cd == (iconv_t)-1) {
     perror("iconv_open 失败");
     return;
