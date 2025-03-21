@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
   }
   int num_bmp_files = 0;
 
-  FILE *output = fopen("../output.txt", "a");
+  FILE *output = fopen("../output.txt","w");
   for (int clusId = hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     if (clus_info[clusId].type == DIR) {
       num_bmp_files += scan_dents_in_cluster(clusId, clus_info,output);
