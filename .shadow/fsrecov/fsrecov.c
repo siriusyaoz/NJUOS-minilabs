@@ -237,9 +237,9 @@ void scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
   struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId);
   struct fat32dent *end = (struct fat32dent *)cluster_address(clusId + 1);
   bmpfile bmpf;
-  while (dent + 1 < end) {
+  while (dent < end) {
     if (memcmp(dent->DIR_Name + 8, "BMP", 3) == 0 &&
-        dent->DIR_Attr & ATTR_DIRECTORY) {
+        dent->DIR_Attr & ATTR_READ_ONLY) {
       get_filename(dent, bmpf.shortname);
       bmpf.size = dent->DIR_FileSize;
       bmpf.dataClus = dent->DIR_FstClusLO | (dent->DIR_FstClusHI << 16);
