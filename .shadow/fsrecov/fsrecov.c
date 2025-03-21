@@ -177,7 +177,7 @@ int is_dir_type(struct fat32dent *dent) {
       return 1;
     }
   }
-  return NULL;
+  return 0;
 }
 int is_bmp_header_type(struct fat32dent *dent) {
   char *p = (char *)dent;
