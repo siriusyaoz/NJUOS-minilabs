@@ -166,15 +166,14 @@ release:
 int is_dir_type(struct fat32dent *dent) {
   //扫描cluster之后的该cluster的所有字符，若出现多次BMP字符，则为DIRtype
   int count = 0;
-  void *p = (void *)dent;
   int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
+  struct fat32dent *end = dent + cluster_bytes/32;
   //从第8个字符开始检查是否是"bmp"
-  for (int i = 8; i < cluster_bytes - 32; i++) {
-    p += i;
-    if (memcmp(p, "BMP", 3) == 0) {
+  for (struct fat32dent *p=dent; p<end; p++) {
+    if (memcmp(p->DIR_Name + 8, "BMP", 3) == 0) {
       count++;
     }
-    if (count > 2) {
+    if (count > 3) {
       return 1;
     }
   }
