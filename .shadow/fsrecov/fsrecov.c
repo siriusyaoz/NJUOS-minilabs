@@ -198,54 +198,16 @@ void find_cluster_type(int clusId, clusterInfo *clusters) {
     clusters[clusId].type = BMPDATA;
   }
 }
-void dfs_scan(u32 clusId, int depth, int is_dir) {
-  // RTFM: Sec 6
 
-  for (; clusId < CLUS_INVALID; clusId = next_cluster(clusId)) {
-
-    if (is_dir) {
-      int ndents =
-          hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus / sizeof(struct fat32dent);
-
-      for (int d = 0; d < ndents; d++) {
-        struct fat32dent *dent =
-            (struct fat32dent *)cluster_address(clusId) + d;
-        if (dent->DIR_Name[0] == 0x00 || dent->DIR_Name[0] == 0xe5 ||
-            dent->DIR_Attr & ATTR_HIDDEN)
-          continue;
-
-        char fname[32];
-        get_filename(dent, fname);
-
-        for (int i = 0; i < 4 * depth; i++)
-          putchar(' ');
-        printf("[%-12s] %6.1lf KiB    ", fname, dent->DIR_FileSize / 1024.0);
-
-        u32 dataClus = dent->DIR_FstClusLO | (dent->DIR_FstClusHI << 16);
-        if (dent->DIR_Attr & ATTR_DIRECTORY) {
-          printf("\n");
-          if (dent->DIR_Name[0] != '.') {
-            dfs_scan(dataClus, depth + 1, 1);
-          }
-        } else {
-          dfs_scan(dataClus, depth + 1, 0);
-          printf("\n");
-        }
-      }
-    } else {
-      printf("#%d ", clusId);
-    }
-  }
-}
-void write_to_temp_file(char temp_path[],void *data, bmpfile bmpf) {
-  int fd = mkstemp(temp_path);        // 创建临时文件
+void write_to_temp_file(char temp_path[], void *data, bmpfile bmpf) {
+  int fd = mkstemp(temp_path); // 创建临时文件
   if (fd < 0) {
     perror("mkstemp");
     exit(EXIT_FAILURE);
   }
 
   // 将数据写入文件
-  int size=bmpf.size;
+  int size = bmpf.size;
   ssize_t written = write(fd, data, size);
   if (written < size) {
     perror("write");
@@ -261,7 +223,7 @@ void calc_sha1(bmpfile *bmpf) {
   int size = bmpf->size;
   // 将数据写入临时文件
   char temp_path[] = "/tmp/tempfileXXXXXX";
-  write_to_temp_file(temp_path,data, *bmpf);
+  write_to_temp_file(temp_path, data, *bmpf);
   char command[256];
   sprintf(command, "sha1sum %s", temp_path);
   printf("Data written to temporary file: %s\n", temp_path);
@@ -279,38 +241,39 @@ void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
   int longname_idx = 0;
   for (int i = 1; low + i < dent; i++) {
     struct fat32LongNamedent *longName = (struct fat32LongNamedent *)(dent - i);
-    assert(longName->LDIR_Attr == ATTR_LONG_NAME);
-    assert(longName->LDIR_Ord == i ||
-           longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
-    if (i == 1) {
-      //记录checksum之后验证
-      bmpf->checksum = longName->LDIR_Chksum;
-    }
-    for (int j = 0; j < 5; j++) {
-      u16 c = longName->LDIR_Name1[j];
-      if (c == 0xFFFF)
-        break; // 结束符
-      bmpf->longname[longname_idx++] = c;
-    }
+    if (longName->LDIR_Attr == ATTR_LONG_NAME) {
+      assert(longName->LDIR_Ord == i ||
+             longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
+      if (i == 1) {
+        //记录checksum之后验证
+        bmpf->checksum = longName->LDIR_Chksum;
+      }
+      for (int j = 0; j < 5; j++) {
+        u16 c = longName->LDIR_Name1[j];
+        if (c == 0xFFFF)
+          break; // 结束符
+        bmpf->longname[longname_idx++] = c;
+      }
 
-    // 第2部分（6字符）
-    for (int j = 0; j < 6; j++) {
-      u16 c = longName->LDIR_Name2[j];
-      if (c == 0xFFFF)
+      // 第2部分（6字符）
+      for (int j = 0; j < 6; j++) {
+        u16 c = longName->LDIR_Name2[j];
+        if (c == 0xFFFF)
+          break;
+        bmpf->longname[longname_idx++] = c;
+      }
+
+      // 第3部分（2字符）
+      for (int j = 0; j < 2; j++) {
+        u16 c = longName->LDIR_Name3[j];
+        if (c == 0xFFFF)
+          break;
+        bmpf->longname[longname_idx++] = c;
+      }
+
+      if (longName->LDIR_Ord & LAST_LONG_ENTRY) {
         break;
-      bmpf->longname[longname_idx++] = c;
-    }
-
-    // 第3部分（2字符）
-    for (int j = 0; j < 2; j++) {
-      u16 c = longName->LDIR_Name3[j];
-      if (c == 0xFFFF)
-        break;
-      bmpf->longname[longname_idx++] = c;
-    }
-
-    if (longName->LDIR_Ord & LAST_LONG_ENTRY) {
-      break;
+      }
     }
   }
 }
