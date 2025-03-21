@@ -167,7 +167,7 @@ struct fat32dent *is_dir_type(struct fat32dent *dent) {
   int count = 0;
   char *p;
   int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
-  char *firstbmp;
+  char *firstbmp=p;
   //从第8个字符开始检查是否是"bmp"
   for (int i = 8; i < cluster_bytes - 32; i++) {
     p = (char *)dent + i;
