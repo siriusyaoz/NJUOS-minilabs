@@ -56,7 +56,7 @@ typedef struct {
 
 void *mmap_disk(const char *fname);
 void find_cluster_type(int clusId, clusterInfo *clusters);
-void *cluster_to_sec(int n);
+void *cluster_address(int n);
 void scan_dents_in_cluster(int clusId, clusterInfo *clusters);
 
 int main(int argc, char *argv[]) {
@@ -108,7 +108,7 @@ u32 next_cluster(int n) {
   u32 *fat = (u32 *)((u8 *)hdr + off);
   return fat[n];
 }
-void *cluster_to_sec(int n) {
+void *cluster_address(int n) {
   // RTFM: Sec 3.5 and 4 (TRICKY)
   // Don't copy code. Write your own.
 
@@ -186,7 +186,7 @@ int is_bmp_header_type(struct fat32dent *dent) {
   return 0;
 }
 void find_cluster_type(int clusId, clusterInfo *clusters) {
-  struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
+  struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId);
   if (is_dir_type(dent)) {
     clusters[clusId].type = DIR;
   } else if (is_bmp_header_type(dent)) {
@@ -205,7 +205,7 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
           hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus / sizeof(struct fat32dent);
 
       for (int d = 0; d < ndents; d++) {
-        struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId) + d;
+        struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId) + d;
         if (dent->DIR_Name[0] == 0x00 || dent->DIR_Name[0] == 0xe5 ||
             dent->DIR_Attr & ATTR_HIDDEN)
           continue;
@@ -234,11 +234,11 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
   }
 }
 void scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
-  struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
-  struct fat32dent *end = (struct fat32dent *)cluster_to_sec(clusId + 1);
+  struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId);
+  struct fat32dent *end = (struct fat32dent *)cluster_address(clusId + 1);
   bmpfile bmpf;
   while (dent + 1 < end) {
-    if (memcmp(dent->DIR_Name + 8, "bmp", 3) == 0 &&
+    if (memcmp(dent->DIR_Name + 8, "BMP", 3) == 0 &&
         dent->DIR_Attr & ATTR_DIRECTORY) {
       get_filename(dent, bmpf.shortname);
       bmpf.size = dent->DIR_FileSize;
