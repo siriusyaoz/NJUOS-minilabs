@@ -189,7 +189,7 @@ int is_bmp_header_type(struct fat32dent *dent) {
 void find_cluster_type(int clusId, clusterInfo *clusters) {
   struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
   struct fat32dent *dent_start;
-  if ((dent_start = is_dir_type(dent))) {
+  if (is_dir_type(dent)) {
     clusters[clusId].type = DIR;
   } else if (is_bmp_header_type(dent)) {
     clusters[clusId].type = BMPHEADER;
