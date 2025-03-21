@@ -2,6 +2,7 @@
 #include "fat32.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <iconv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -236,45 +237,97 @@ void calc_sha1(bmpfile *bmpf) {
   fscanf(fp, "%s", bmpf->sha1); // Get it!
   pclose(fp);
 }
+
+void utf16_to_utf8(const u16 *src, char *dst, size_t dst_size) {
+  iconv_t cd = iconv_open("UTF-8", "UTF-16LE");
+  if (cd == (iconv_t)-1) {
+    perror("iconv_open 失败");
+    return;
+  }
+
+  size_t src_len = 0;
+  while (src[src_len] != 0)
+    src_len++;
+  src_len *= 2; // 转换为字节长度
+
+  char *inbuf = (char *)src;
+  size_t inbytesleft = src_len;
+  char *outbuf = dst;
+  size_t outbytesleft = dst_size - 1; // 保留空间给 '\0'
+
+  if (iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)-1) {
+    perror("iconv 转换失败");
+  }
+  *outbuf = '\0'; // 确保字符串终止
+
+  iconv_close(cd);
+}
 void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
-  struct fat32dent *low = cluster_address(hdr->BPB_RootClus);
-  int longname_idx = 0;
-  for (int i = 1; low + i < dent; i++) {
-    struct fat32LongNamedent *longName = (struct fat32LongNamedent *)(dent - i);
-    if (longName->LDIR_Attr == ATTR_LONG_NAME) {
-      assert(longName->LDIR_Ord == i ||longName->LDIR_Ord == (LAST_LONG_ENTRY | i));
-      if (i == 1) {
-        //记录checksum之后验证
-        bmpf->checksum = longName->LDIR_Chksum;
-      }
-      for (int j = 0; j < 5; j++) {
-        u16 c = longName->LDIR_Name1[j];
-        if (c == 0xFFFF)
-          break; // 结束符
-        bmpf->longname[longname_idx++] = c;
-      }
+  // 1. 初始化缓冲区并清零
+  u16 longname_utf16[256] = {0}; // 存储UTF-16LE长文件名
+  int longname_idx = 0;          // 当前写入位置
+  u8 expected_order = 0;         // 预期下一个条目的顺序号
+  u8 checksum = 0; // 校验和（用于验证长名与短名一致性）
 
-      // 第2部分（6字符）
-      for (int j = 0; j < 6; j++) {
-        u16 c = longName->LDIR_Name2[j];
-        if (c == 0xFFFF)
-          break;
-        bmpf->longname[longname_idx++] = c;
-      }
+  // 2. 遍历目录项，从当前 dent 向前查找长名条目（逆序）
+  for (int i = 1;; i++) { // i 表示向前查找的偏移量
+    struct fat32LongNamedent *long_entry =
+        (struct fat32LongNamedent *)(dent - i);
 
-      // 第3部分（2字符）
-      for (int j = 0; j < 2; j++) {
-        u16 c = longName->LDIR_Name3[j];
-        if (c == 0xFFFF)
-          break;
-        bmpf->longname[longname_idx++] = c;
-      }
+    // 3. 验证条目是否为长文件名条目
+    if (long_entry->LDIR_Attr != ATTR_LONG_NAME) {
+      break; // 遇到非长名条目，结束遍历
+    }
 
-      if (longName->LDIR_Ord & LAST_LONG_ENTRY) {
+    // 4. 校验顺序号是否连续
+    u8 current_order = long_entry->LDIR_Ord & 0x3F; // 去除最高位
+    if (current_order != expected_order) {
+      fprintf(stderr, "长文件名顺序错误：预期 %d，实际 %d\n", expected_order,
+              current_order);
+      return;
+    }
+    expected_order++;
+
+    // 5. 记录校验和（只需第一个长名条目）
+    if (current_order == 1) {
+      checksum = long_entry->LDIR_Chksum;
+    }
+
+    // 6. 提取各部分的UTF-16字符
+    // 第1部分（5字符）
+    for (int j = 0; j < 5; j++) {
+      u16 c = long_entry->LDIR_Name1[j];
+      if (c == 0xFFFF)
+        break; // 结束符
+      longname_utf16[longname_idx++] = c;
+    }
+
+    // 第2部分（6字符）
+    for (int j = 0; j < 6; j++) {
+      u16 c = long_entry->LDIR_Name2[j];
+      if (c == 0xFFFF)
         break;
-      }
+      longname_utf16[longname_idx++] = c;
+    }
+
+    // 第3部分（2字符）
+    for (int j = 0; j < 2; j++) {
+      u16 c = long_entry->LDIR_Name3[j];
+      if (c == 0xFFFF)
+        break;
+      longname_utf16[longname_idx++] = c;
+    }
+
+    // 7. 检查是否为最后一个长名条目
+    if (long_entry->LDIR_Ord & 0x40) {
+      break; // 已处理完所有长名条目
     }
   }
+
+  // 8. 验证校验和（可选但推荐）
+
+  // 9. 转换为UTF-8并写入bmpf->longname
+  utf16_to_utf8(longname_utf16, bmpf->longname, sizeof(bmpf->longname));
 }
 
 int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
@@ -296,7 +349,7 @@ int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
         calc_sha1(&bmpf);
         printf("bmp file sha1: %s\n", bmpf.sha1);
         get_longname(dent, &bmpf);
-        printf("dent long name[%-12s]   ",bmpf.longname);
+        printf("dent long name[%-12s]   ", bmpf.longname);
       }
     }
     dent++;
