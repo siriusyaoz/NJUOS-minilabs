@@ -79,8 +79,10 @@ int main(int argc, char *argv[]) {
   // dfs_scan(hdr->BPB_RootClus, 0, 1);
   int numclusters = hdr->BPB_TotSec32 / hdr->BPB_SecPerClus;
   clusterInfo clus_info[numclusters + 2];
-  for (int clusId =hdr->BPB_RootClus; clusId < numclusters; clusId++) {
+  for (int clusId = hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     find_cluster_type(clusId, clus_info);
+  }
+  for (int clusId = hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     if (clus_info[clusId].type == DIR) {
       scan_dents_in_cluster(clusId, clus_info);
     }
@@ -164,11 +166,11 @@ release:
 int is_dir_type(struct fat32dent *dent) {
   //扫描cluster之后的该cluster的所有字符，若出现多次BMP字符，则为DIRtype
   int count = 0;
-  char *p;
+  char *p = (char *)dent;
   int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
   //从第8个字符开始检查是否是"bmp"
   for (int i = 8; i < cluster_bytes - 32; i++) {
-    p = (char *)dent + i;
+    p += i;
     if (memcmp(p, "BMP", 3) == 0) {
       count++;
     }
@@ -205,7 +207,8 @@ void dfs_scan(u32 clusId, int depth, int is_dir) {
           hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus / sizeof(struct fat32dent);
 
       for (int d = 0; d < ndents; d++) {
-        struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId) + d;
+        struct fat32dent *dent =
+            (struct fat32dent *)cluster_address(clusId) + d;
         if (dent->DIR_Name[0] == 0x00 || dent->DIR_Name[0] == 0xe5 ||
             dent->DIR_Attr & ATTR_HIDDEN)
           continue;
