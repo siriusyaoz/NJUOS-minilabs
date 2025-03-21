@@ -58,7 +58,7 @@ typedef struct {
 void *mmap_disk(const char *fname);
 void find_cluster_type(int clusId, clusterInfo *clusters);
 void *cluster_address(int n);
-int scan_dents_in_cluster(int clusId, clusterInfo *clusters);
+int scan_dents_in_cluster(int clusId, clusterInfo *clusters,FILE* fp);
 
 int main(int argc, char *argv[]) {
 
@@ -84,11 +84,14 @@ int main(int argc, char *argv[]) {
     find_cluster_type(clusId, clus_info);
   }
   int num_bmp_files = 0;
+
+  FILE *output = fopen("../output.txt", "a");
   for (int clusId = hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     if (clus_info[clusId].type == DIR) {
-      num_bmp_files += scan_dents_in_cluster(clusId, clus_info);
+      num_bmp_files += scan_dents_in_cluster(clusId, clus_info,output);
     }
   }
+  fclose(output);
   printf("num of bmp files: %d\n", num_bmp_files);
   munmap(hdr, hdr->BPB_TotSec32 * hdr->BPB_BytsPerSec);
 }
@@ -326,7 +329,7 @@ void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
   utf16_to_utf8(longname_utf16, bmpf->longname, sizeof(bmpf->longname));
 }
 
-int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
+int scan_dents_in_cluster(int clusId, clusterInfo *clusters,FILE* fp) {
   struct fat32dent *dent = (struct fat32dent *)cluster_address(clusId);
   struct fat32dent *end = (struct fat32dent *)cluster_address(clusId + 1);
   bmpfile bmpf;
@@ -346,6 +349,7 @@ int scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
         printf("bmp file sha1: %s\n", bmpf.sha1);
         get_longname(dent, &bmpf);
         printf("dent long name[%-12s]   ", bmpf.longname);
+        fprintf(fp, "%s %s\n", bmpf.sha1, bmpf.longname);
       }
     }
     dent++;
