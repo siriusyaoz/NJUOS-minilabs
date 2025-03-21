@@ -220,7 +220,10 @@ void write_to_temp_file(char temp_path[], void *data, bmpfile bmpf) {
   }
 
   close(fd); // 关闭文件
-  printf("Data written to temporary file: %s\n", temp_path);
+  if(memcmp(bmpf.shortname,"HJ9AFS61",8)==0){
+    printf("HJ9AFS61 written to temporary file: %s\n", temp_path);
+  }
+  
 }
 void calc_sha1(bmpfile *bmpf) {
   void *data = cluster_address(bmpf->dataClus);
