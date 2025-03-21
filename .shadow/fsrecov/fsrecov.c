@@ -289,10 +289,6 @@ void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
     expected_order++;
 
     // 5. 记录校验和（只需第一个长名条目）
-    if (current_order == 1) {
-      checksum = long_entry->LDIR_Chksum;
-    }
-
     // 6. 提取各部分的UTF-16字符
     // 第1部分（5字符）
     for (int j = 0; j < 5; j++) {
