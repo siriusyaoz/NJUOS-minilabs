@@ -266,7 +266,7 @@ void get_longname(struct fat32dent *dent, bmpfile *bmpf) {
   // 1. 初始化缓冲区并清零
   u16 longname_utf16[256] = {0}; // 存储UTF-16LE长文件名
   int longname_idx = 0;          // 当前写入位置
-  u8 expected_order = 0;         // 预期下一个条目的顺序号
+  u8 expected_order = 1;         // 预期下一个条目的顺序号
   //u8 checksum = 0; // 校验和（用于验证长名与短名一致性）
 
   // 2. 遍历目录项，从当前 dent 向前查找长名条目（逆序）
