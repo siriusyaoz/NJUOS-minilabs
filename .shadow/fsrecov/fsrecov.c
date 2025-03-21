@@ -1,4 +1,4 @@
-// ./fsrecov-64 ../fs.img
+// ./fsrecov-64 ../fsrecov.img
 #include "fat32.h"
 #include <assert.h>
 #include <fcntl.h>
@@ -79,8 +79,7 @@ int main(int argc, char *argv[]) {
   // dfs_scan(hdr->BPB_RootClus, 0, 1);
   int numclusters = hdr->BPB_TotSec32 / hdr->BPB_SecPerClus;
   clusterInfo clus_info[numclusters + 2];
-  for (int i = 0; i < numclusters; i++) {
-    int clusId = i + 2;
+  for (int clusId =hdr->BPB_RootClus; clusId < numclusters; clusId++) {
     find_cluster_type(clusId, clus_info);
     if (clus_info[clusId].type == DIR) {
       scan_dents_in_cluster(clusId, clus_info);
@@ -170,7 +169,7 @@ int is_dir_type(struct fat32dent *dent) {
   //从第8个字符开始检查是否是"bmp"
   for (int i = 8; i < cluster_bytes - 32; i++) {
     p = (char *)dent + i;
-    if (memcmp(p, "bmp", 3) == 0) {
+    if (memcmp(p, "BMP", 3) == 0) {
       count++;
     }
     if (count > 3) {
@@ -188,7 +187,6 @@ int is_bmp_header_type(struct fat32dent *dent) {
 }
 void find_cluster_type(int clusId, clusterInfo *clusters) {
   struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
-  struct fat32dent *dent_start;
   if (is_dir_type(dent)) {
     clusters[clusId].type = DIR;
   } else if (is_bmp_header_type(dent)) {
