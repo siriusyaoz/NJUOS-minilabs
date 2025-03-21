@@ -51,6 +51,17 @@ struct fat32dent {
     u32 DIR_FileSize;
 } __attribute__((packed));
 
+struct fat32LongNamedent{
+    u8  LDIR_Ord;
+    u8  LDIR_Name1[10];
+    u8  LDIR_Attr;
+    u8  LDIR_Type;
+    u8  LDIR_Chksum;
+    u8  LDIR_Name2[12];
+    u8  LDIR_FstClusLO;
+    u8  LDIR_Name3[4];    
+}__attribute__((packed));
+
 #define CLUS_INVALID   0xffffff7
 
 #define ATTR_READ_ONLY 0x01

@@ -37,18 +37,27 @@ typedef struct {
 
 enum cluster_type {
   DIR,
-  BMPHEAD,
+  BMPHEADER,
   BMPDATA,
-  FREE,
 };
 
 typedef struct {
-  int n; //position of cluster
   enum cluster_type type;
+} clusterInfo;
 
-} clusterNode;
+typedef struct {
+  char shortname[32];
+  char name[64];
+  u32 dataClus;
+  u32 size;
+  int fd;
+  char sha1[40];
+} bmpfile;
+
 void *mmap_disk(const char *fname);
-
+void find_cluster_type(int clusId, clusterInfo *clusters);
+void *cluster_to_sec(int n);
+void scan_dents_in_cluster(int clusId, clusterInfo *clusters);
 
 int main(int argc, char *argv[]) {
 
@@ -68,22 +77,30 @@ int main(int argc, char *argv[]) {
 
   // File system traversal.
   // dfs_scan(hdr->BPB_RootClus, 0, 1);
-
+  int numclusters = hdr->BPB_TotSec32 / hdr->BPB_SecPerClus;
+  clusterInfo clus_info[numclusters + 2];
+  for (int i = 0; i < numclusters; i++) {
+    int clusId = i + 2;
+    find_cluster_type(clusId, clus_info);
+    if (clus_info[clusId].type == DIR) {
+      scan_dents_in_cluster(clusId, clus_info);
+    }
+  }
   munmap(hdr, hdr->BPB_TotSec32 * hdr->BPB_BytsPerSec);
 }
 
 void get_filename(struct fat32dent *dent, char *buf) {
-    // RTFM: Sec 6.1
+  // RTFM: Sec 6.1
 
-    int len = 0;
-    for (int i = 0; i < sizeof(dent->DIR_Name); i++) {
-        if (dent->DIR_Name[i] != ' ') {
-            if (i == 8)
-                buf[len++] = '.';
-            buf[len++] = dent->DIR_Name[i];
-        }
+  int len = 0;
+  for (int i = 0; i < sizeof(dent->DIR_Name); i++) {
+    if (dent->DIR_Name[i] != ' ') {
+      if (i == 8)
+        buf[len++] = '.';
+      buf[len++] = dent->DIR_Name[i];
     }
-    buf[len] = '\0';
+  }
+  buf[len] = '\0';
 }
 u32 next_cluster(int n) {
   // RTFM: Sec 4.1
@@ -93,12 +110,12 @@ u32 next_cluster(int n) {
   return fat[n];
 }
 void *cluster_to_sec(int n) {
-    // RTFM: Sec 3.5 and 4 (TRICKY)
-    // Don't copy code. Write your own.
+  // RTFM: Sec 3.5 and 4 (TRICKY)
+  // Don't copy code. Write your own.
 
-    u32 DataSec = hdr->BPB_RsvdSecCnt + hdr->BPB_NumFATs * hdr->BPB_FATSz32;
-    DataSec += (n - 2) * hdr->BPB_SecPerClus;
-    return ((char *)hdr) + DataSec * hdr->BPB_BytsPerSec;
+  u32 DataSec = hdr->BPB_RsvdSecCnt + hdr->BPB_NumFATs * hdr->BPB_FATSz32;
+  DataSec += (n - 2) * hdr->BPB_SecPerClus;
+  return ((char *)hdr) + DataSec * hdr->BPB_BytsPerSec;
 }
 
 void *mmap_disk(const char *fname) {
@@ -145,41 +162,100 @@ release:
   exit(1);
 }
 
+struct fat32dent *is_dir_type(struct fat32dent *dent) {
+  //扫描cluster之后的该cluster的所有字符，若出现多次BMP字符，则为DIRtype
+  int count = 0;
+  char *p;
+  int cluster_bytes = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
+  char *firstbmp;
+  //从第8个字符开始检查是否是"bmp"
+  for (int i = 8; i < cluster_bytes - 32; i++) {
+    p = (char *)dent + i;
+    if (memcmp(p, "bmp", 3) == 0) {
+      count++;
+    }
+    if (count == 1) {
+      firstbmp = p;
+    }
+  }
+  if (count > 3) {
+    return (struct fat32dent *)(firstbmp - 8);
+  }
+  return NULL;
+}
+int is_bmp_header_type(struct fat32dent *dent) {
+  char *p = (char *)dent;
+  if (memcmp(p, "BM", 2) == 0) {
+    return 1;
+  }
+  return 0;
+}
+void find_cluster_type(int clusId, clusterInfo *clusters) {
+  struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
+  struct fat32dent *dent_start;
+  if ((dent_start = is_dir_type(dent))) {
+    clusters[clusId].type = DIR;
+  } else if (is_bmp_header_type(dent)) {
+    clusters[clusId].type = BMPHEADER;
+  } else {
+    clusters[clusId].type = BMPDATA;
+  }
+}
 void dfs_scan(u32 clusId, int depth, int is_dir) {
   // RTFM: Sec 6
 
   for (; clusId < CLUS_INVALID; clusId = next_cluster(clusId)) {
 
-      if (is_dir) {
-          int ndents = hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus / sizeof(struct fat32dent);
+    if (is_dir) {
+      int ndents =
+          hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus / sizeof(struct fat32dent);
 
-          for (int d = 0; d < ndents; d++) {
-              struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId) + d;
-              if (dent->DIR_Name[0] == 0x00 ||
-                  dent->DIR_Name[0] == 0xe5 ||
-                  dent->DIR_Attr & ATTR_HIDDEN)
-                  continue;
+      for (int d = 0; d < ndents; d++) {
+        struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId) + d;
+        if (dent->DIR_Name[0] == 0x00 || dent->DIR_Name[0] == 0xe5 ||
+            dent->DIR_Attr & ATTR_HIDDEN)
+          continue;
 
-              char fname[32];
-              get_filename(dent, fname);
+        char fname[32];
+        get_filename(dent, fname);
 
-              for (int i = 0; i < 4 * depth; i++)
-                  putchar(' ');
-              printf("[%-12s] %6.1lf KiB    ", fname, dent->DIR_FileSize / 1024.0);
+        for (int i = 0; i < 4 * depth; i++)
+          putchar(' ');
+        printf("[%-12s] %6.1lf KiB    ", fname, dent->DIR_FileSize / 1024.0);
 
-              u32 dataClus = dent->DIR_FstClusLO | (dent->DIR_FstClusHI << 16);
-              if (dent->DIR_Attr & ATTR_DIRECTORY) {
-                  printf("\n");
-                  if (dent->DIR_Name[0] != '.') {
-                      dfs_scan(dataClus, depth + 1, 1);
-                  }
-              } else {
-                  dfs_scan(dataClus, depth + 1, 0);
-                  printf("\n");
-              }
+        u32 dataClus = dent->DIR_FstClusLO | (dent->DIR_FstClusHI << 16);
+        if (dent->DIR_Attr & ATTR_DIRECTORY) {
+          printf("\n");
+          if (dent->DIR_Name[0] != '.') {
+            dfs_scan(dataClus, depth + 1, 1);
           }
-      } else {
-          printf("#%d ", clusId);
+        } else {
+          dfs_scan(dataClus, depth + 1, 0);
+          printf("\n");
+        }
       }
+    } else {
+      printf("#%d ", clusId);
+    }
+  }
+}
+void scan_dents_in_cluster(int clusId, clusterInfo *clusters) {
+  struct fat32dent *dent = (struct fat32dent *)cluster_to_sec(clusId);
+  struct fat32dent *end = (struct fat32dent *)cluster_to_sec(clusId + 1);
+  bmpfile bmpf;
+  while (dent + 1 < end) {
+    if (memcmp(dent->DIR_Name + 8, "bmp", 3) == 0 &&
+        dent->DIR_Attr & ATTR_DIRECTORY) {
+      get_filename(dent, bmpf.shortname);
+      bmpf.size = dent->DIR_FileSize;
+      bmpf.dataClus = dent->DIR_FstClusLO | (dent->DIR_FstClusHI << 16);
+      //目录项确实是一个bmp文件
+      if (clusters[bmpf.dataClus].type == BMPHEADER) {
+        printf("dent short name[%-12s] %6.1lf KiB    ", dent->DIR_Name,
+               dent->DIR_FileSize / 1024.0);
+        printf("dent bmp file data clus :%d\n", bmpf.dataClus);
+      }
+    }
+    dent++;
   }
 }
