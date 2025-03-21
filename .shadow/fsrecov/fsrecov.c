@@ -262,7 +262,7 @@ void calc_sha1(bmpfile *bmpf) {
   void *data = cluster_address(bmpf->dataClus);
   int size = bmpf->size;
   // 将数据写入临时文件
-  write_to_temp_file(data, bmpf);
+  write_to_temp_file(data, *bmpf);
   FILE *fp = popen("sha1sum /tmp/tmpfile", "r");
   // 替换 panic_on(fp < 0, "popen"); 为以下代码：
   if (fp < 0) {
