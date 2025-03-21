@@ -220,10 +220,6 @@ void write_to_temp_file(char temp_path[], void *data, bmpfile bmpf) {
   }
 
   close(fd); // 关闭文件
-  if(memcmp(bmpf.shortname,"HJ9AFS61",8)==0){
-    printf("HJ9AFS61 written to temporary file: %s\n", temp_path);
-  }
-  
 }
 void calc_sha1(bmpfile *bmpf) {
   void *data = cluster_address(bmpf->dataClus);
@@ -233,6 +229,7 @@ void calc_sha1(bmpfile *bmpf) {
   write_to_temp_file(temp_path, data, *bmpf);
   char command[256];
   sprintf(command, "sha1sum %s", temp_path);
+  //printf("Data written to temporary file: %s\n", temp_path);
   FILE *fp = popen(command, "r");
   // 替换 panic_on(fp < 0, "popen"); 为以下代码：
   if (fp < 0) {
